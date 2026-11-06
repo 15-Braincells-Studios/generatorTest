@@ -1,0 +1,3799 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Castle Murder Generator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one case-file column; generator first, then cast view, stress test + coverage, reading rules last */
+:root{
+  --bg:#EDEFF3; --surface:#FFFFFF; --ink:#1A2030; --muted:#596277; --line:#D3D8E1;
+  --azuur:#2A4A9C; --azuur-zacht:#E2E8F6; --goud:#94701A; --goud-zacht:#F4ECD6;
+  --ok:#24704A; --ok-zacht:#DFF0E6; --bad:#A8372B; --bad-zacht:#F7E1DE;
+  --f-display:"Alegreya SC", Georgia, serif;
+  --f-body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10131A; --surface:#191E28; --ink:#E4E7EE; --muted:#9AA3B6; --line:#2B3240;
+  --azuur:#93ABF2; --azuur-zacht:#222C44; --goud:#D9B65C; --goud-zacht:#352D18;
+  --ok:#72C79A; --ok-zacht:#183326; --bad:#EE8B7F; --bad-zacht:#3A1E1B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10131A; --surface:#191E28; --ink:#E4E7EE; --muted:#9AA3B6; --line:#2B3240;
+  --azuur:#93ABF2; --azuur-zacht:#222C44; --goud:#D9B65C; --goud-zacht:#352D18;
+  --ok:#72C79A; --ok-zacht:#183326; --bad:#EE8B7F; --bad-zacht:#3A1E1B; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:52px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0;letter-spacing:.01em}
+h1{font-size:clamp(32px,6.5vw,48px);line-height:1.05}
+h2{font-size:27px;line-height:1.15}
+h3{font-size:17px;color:var(--muted)}
+p{margin:0;max-width:68ch}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--goud)}
+.lead{font-size:19px;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:14px}
+.facts{display:flex;flex-wrap:wrap;gap:8px}
+.fact{font-family:var(--f-mono);font-size:13px;padding:5px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.fact b{color:var(--azuur);font-weight:500}
+section{display:flex;flex-direction:column;gap:18px}
+.sec-head{display:flex;flex-direction:column;gap:8px;border-top:2px solid var(--ink);padding-top:14px}
+button{font:500 15px var(--f-body);border-radius:6px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button.primary{background:var(--azuur);border-color:var(--azuur);color:var(--surface)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--goud);outline-offset:2px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seed{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.gen{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:780px){.gen{grid-template-columns:1fr}}
+.clues{display:flex;flex-direction:column;gap:20px;min-width:0}
+.cat-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.clue{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:11px 13px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
+.clue input{margin-top:5px;width:18px;height:18px;accent-color:var(--azuur)}
+.clue.off{opacity:.45}
+.meta{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--goud);display:flex;flex-wrap:wrap;gap:4px 10px}
+.meta .src{color:var(--muted);letter-spacing:0}
+.clue-text{font-size:16px}
+.logic{grid-column:2;font-family:var(--f-mono);font-size:12px;color:var(--azuur)}
+.logic.muted{color:var(--muted)}
+.tag-fake{font-family:var(--f-mono);font-size:11px;color:var(--bad)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+@media (max-width:780px){.panel{position:static;order:-1}}
+.lbl{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:14px;padding:3px 9px;border-radius:999px;background:var(--azuur-zacht);color:var(--azuur);border:1px solid transparent}
+.chip.out{background:transparent;color:var(--muted);text-decoration:line-through;border-color:var(--line)}
+.status{padding:10px 12px;border-radius:8px;font-size:15px}
+.status.ok{background:var(--ok-zacht);color:var(--ok)}
+.status.bad{background:var(--bad-zacht);color:var(--bad)}
+.status.wait{background:var(--goud-zacht);color:var(--goud)}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-weight:500}
+.sol{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:10px;font-size:15px}
+.sol dt{color:var(--muted)} .sol dd{margin:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px}
+.stat .n{font-family:var(--f-display);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.stat .t{font-size:14px;color:var(--muted);margin-top:4px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{text-align:left;vertical-align:top;padding:7px 10px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--bg)}
+tr.sheet td{font-family:var(--f-display);font-size:16px;background:var(--bg);color:var(--ink)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono);font-size:13px;white-space:nowrap}
+.bar{height:6px;border-radius:3px;background:var(--azuur);min-width:2px}
+.zero{color:var(--bad)}
+.rules{display:flex;flex-direction:column;gap:0}
+.rule{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:16px;padding:11px 0;border-bottom:1px solid var(--line)}
+@media (max-width:600px){.rule{grid-template-columns:1fr;gap:4px}}
+.rule b{font-weight:500}
+.rule span{color:var(--muted);font-size:15px}
+@media (prefers-reduced-motion:no-preference){.clue,.chip{transition:opacity .2s,background .2s,color .2s}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;border-radius:0;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--azuur-zacht);color:var(--azuur)}
+.cast{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.person{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.person h4{margin:0;font-family:var(--f-display);font-size:18px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.person .tonight{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.person ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.person .none{font-size:14px;color:var(--bad)}
+.role{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border-radius:4px}
+.role.d{background:var(--bad-zacht);color:var(--bad)} .role.s{background:var(--goud-zacht);color:var(--goud)}
+.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.obs{display:flex;flex-direction:column;gap:0}
+</style>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Work in progress · built from Generation Tables.xlsx</div>
+  <h1>Castle Murder Generator</h1>
+  <p class="lead">Every level is built only from what is in the Excel file right now: characters and their tags, all five methods, method clues with Blocks, motives, alibis with Needs, contradictions and red herrings. A solver checks that each level has exactly one answer, and every character gets at least one line.</p>
+  <div class="facts" id="facts"></div>
+</header>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">1 · One level</div>
+    <h2>Generated from your tables</h2>
+    <p>The texts come straight from Excel, with the placeholders filled in. Each card shows the row it came from and what the solver does with it. Untick a card to see what happens when the player misses that clue.</p>
+  </div>
+  <div class="toolbar"><div class="seg" role="group" aria-label="Method" id="mseg" style="flex-wrap:wrap"></div></div>
+  <div class="toolbar">
+    <button class="primary" id="btn-gen">Generate new level</button>
+    <button id="btn-all">All found</button>
+    <button id="btn-none">Nothing found</button>
+    <span class="seed" id="seed"></span>
+  </div>
+  <div class="gen">
+    <div class="clues" id="clues"></div>
+    <aside class="panel" id="panel"></aside>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">2 · The cast</div>
+    <h2>Who says what in this level</h2>
+    <p>This is how the level plays. The player talks to each character in the afternoon and hears their lines. Notes, documents and objects are listed below, room by room.</p>
+  </div>
+  <div class="cast" id="cast"></div>
+  <h3>Found in rooms</h3>
+  <div class="rooms" id="rooms"></div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">3 · Stress test</div>
+    <h2>A thousand levels, and which rows they use</h2>
+    <p>The generator runs a thousand times. The table shows how often each Excel row ended up in a level. A row with 0 was not picked in this run. If the generator can never pick it, the note says why.</p>
+  </div>
+  <div class="toolbar"><button class="primary" id="btn-test">Run again</button></div>
+  <div class="stats" id="stats"></div>
+  <div class="scroll"><table><thead><tr><th>Row</th><th>Levels</th><th style="width:26%"></th><th>Note</th></tr></thead><tbody id="cov"></tbody></table></div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">4 · Worth a look in the tables</div>
+    <h2>Things the generator noticed</h2>
+    <p>None of this was changed in Excel. These are places where a text reads oddly once it is filled in, or where a rule could be sharper.</p>
+  </div>
+  <div class="rules">
+    <div class="rule"><b>Alibi-specific contradictions are rare</b><span>The generator picks one contradiction at random from all the ones that fit. There are 14 general ones and usually only 1 for the specific alibi, so the specific ones show up in only about 1 in 15 levels where they could appear.</span></div>
+    <div class="rule"><b>Caring for the sick</b><span>This alibi needs someone else to have the alibi Sick first, so it almost never shows up.</span></div>
+    <div class="rule"><b>Not going where they said</b><span>The text says "he'd", which does not fit the Queen, the Princess, the Head of household or the Librarian. "Different story" uses "they'll", which works for everyone.</span></div>
+    <div class="rule"><b>Descriptions instead of lines</b><span>Some alibis are written as a description, not as a line someone says: Sick ("Doctor saying character is sick", "seeing character in Infirmary"), Early to bed and Night watch. The generator shows them as they are written.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">5 · Reading rules</div>
+    <h2>How the generator reads your Excel</h2>
+    <p>Where the Excel describes something in words, the generator had to choose how to read it. These are those choices, so you can check they match what you mean.</p>
+  </div>
+  <div class="rules">
+    <div class="rule"><b>Tags</b><span>Every tag column counts, including Tag 12 (sex). A character's name also works as a tag. "A OR B" means one of the two is enough, "A AND B" means both are needed, and "X, but not Y, Z" or "Any but Y" leaves out Y and Z. The words Suspect, Victim, Witness and Explainer in those lists are already handled by the generator.</span></div>
+    <div class="rule"><b>Method place</b><span>"Small room 1–4 (random)" becomes Small room 1, 2, 3 or 4, picked per level.</span></div>
+    <div class="rule"><b>Murderer and victim</b><span>The murderer matches the method's Suspect tags and the victim its Victim tags. A motive must fit between the two, including its condition ("same role tag", "different sex", "Suspect is not the King").</span></div>
+    <div class="rule"><b>Clue Groups</b><span>Each group is rolled against its Show chance. If it hits, one random clue from that group and method goes into the level. Clues with "X is not the Suspect" or "X is not the Victim" in Fixed text are skipped when that rule would be broken.</span></div>
+    <div class="rule"><b>(excluded) and its limits</b><span>(excluded) names 1–2 innocent characters who are ruled out. If Fixed text limits it ("can't be the Chef or the Head of household", "can only be the King or the Queen", "can only be someone without Drinks tea"), the generator only picks from that group.</span></div>
+    <div class="rule"><b>Blocks and Needs</b><span>The characters named in an (excluded) clue get that clue's Blocks for the whole level. A blocked character never gets an alibi or red herring that Needs the same thing. This also applies to partners. Lifting also needs the tag Strong. Someone blocked for Sight or Afternoon is never an unnamed Witness.</span></div>
+    <div class="rule"><b>Fixed-text effects</b><span>These are coded by hand. Poisoned wine: C3 counts as the full key list, D3 rules out the Princess as victim. Secret meeting: C8 rules out the Head Guard and C9 the Weapons master as murderer, D3 rules out the Weapons master as victim. Heavy book: D3 rules out the Weapons master as victim.</span></div>
+    <div class="rule"><b>(list), (partial list)</b><span>(list) names everyone in the method's tag. (partial list) names the real murderer or victim plus 2–4 others. If the speaker is on a list, they say "me".</span></div>
+    <div class="rule"><b>Unnamed speakers</b><span>"Witness:", "(Witness)" and "(Explainer)" get a character as speaker. Characters who have nothing to say yet go first. A witness is never the person the line is about.</span></div>
+    <div class="rule"><b>Characters on alibis</b><span>"X is busy too" makes X a partner who is covered too. If X is a tag (Tutor), the generator picks someone with that tag. "Partner is busy too" picks the partner from the second word: Any &amp; Any means anyone, Staff &amp; Ruler means a Ruler. "Not with the method X" skips the alibi for that method.</span></div>
+    <div class="rule"><b>Alibi covers the murder</b><span>From ≤ murder time &lt; To, and the alibi place is not the murder place.</span></div>
+    <div class="rule"><b>Fake alibi</b><span>An alibi the murderer could have that covers the murder. Options where the partner vouches for the murderer are skipped, because the partner knows nothing.</span></div>
+    <div class="rule"><b>Contradiction</b><span>One from the general or alibi-specific list, when its tags and every part of its condition fit. The condition can be split with a semicolon. This includes "nobody else has an alibi in the Study room", "nobody else has the alibi Sick", "not for the alibis …" and "not with the method …".</span></div>
+    <div class="rule"><b>Solver</b><span>Everyone starts as a possible murderer and victim. Lists and alibis rule people out, and a contradiction cancels the fake alibi. Exactly one motive must remain where both people are still possible.</span></div>
+  </div>
+</section>
+</div>
+<script>
+const DATA={
+"characters": [
+{
+"Character": "Investigator",
+"Tag 1 (group)": "Player",
+"Tag 2 (role)": "",
+"Tag 3 (access)": "",
+"Tag 4 (drinks)": "",
+"Tag 5 (reading)": "",
+"Tag 6 (writing)": "",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "",
+"Tag 9 (tea)": "",
+"Tag 10 (strength)": "",
+"Tag 11 (aim)": "",
+"Tag 12 (sex)": ""
+},
+{
+"Character": "Chef",
+"Tag 1 (group)": "Staff",
+"Tag 2 (role)": "Cook",
+"Tag 3 (access)": "Pantry-access",
+"Tag 4 (drinks)": "Drinks",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "Writes",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "",
+"Tag 9 (tea)": "",
+"Tag 10 (strength)": "Strong",
+"Tag 11 (aim)": "Marksman",
+"Tag 12 (sex)": "Male"
+},
+{
+"Character": "Prince",
+"Tag 1 (group)": "Royalty",
+"Tag 2 (role)": "Heir",
+"Tag 3 (access)": "All-access",
+"Tag 4 (drinks)": "Drinks",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "Writes",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "Has bedroom",
+"Tag 9 (tea)": "",
+"Tag 10 (strength)": "Strong",
+"Tag 11 (aim)": "Marksman",
+"Tag 12 (sex)": "Male"
+},
+{
+"Character": "Princess",
+"Tag 1 (group)": "Royalty",
+"Tag 2 (role)": "Heir",
+"Tag 3 (access)": "All-access",
+"Tag 4 (drinks)": "",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "Writes",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "Has bedroom",
+"Tag 9 (tea)": "Drinks tea",
+"Tag 10 (strength)": "",
+"Tag 11 (aim)": "Marksman",
+"Tag 12 (sex)": "Female"
+},
+{
+"Character": "King",
+"Tag 1 (group)": "Royalty",
+"Tag 2 (role)": "Ruler",
+"Tag 3 (access)": "All-access",
+"Tag 4 (drinks)": "Drinks",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "Writes",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "Has bedroom",
+"Tag 9 (tea)": "",
+"Tag 10 (strength)": "Strong",
+"Tag 11 (aim)": "Marksman",
+"Tag 12 (sex)": "Male"
+},
+{
+"Character": "Queen",
+"Tag 1 (group)": "Royalty",
+"Tag 2 (role)": "Ruler",
+"Tag 3 (access)": "All-access",
+"Tag 4 (drinks)": "Drinks",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "Writes",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "Has bedroom",
+"Tag 9 (tea)": "Drinks tea",
+"Tag 10 (strength)": "",
+"Tag 11 (aim)": "Marksman",
+"Tag 12 (sex)": "Female"
+},
+{
+"Character": "Head Guard",
+"Tag 1 (group)": "Staff",
+"Tag 2 (role)": "Guard",
+"Tag 3 (access)": "",
+"Tag 4 (drinks)": "Drinks",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "",
+"Tag 9 (tea)": "Drinks tea",
+"Tag 10 (strength)": "Strong",
+"Tag 11 (aim)": "Marksman",
+"Tag 12 (sex)": "Male"
+},
+{
+"Character": "Doctor",
+"Tag 1 (group)": "Staff",
+"Tag 2 (role)": "Medical",
+"Tag 3 (access)": "",
+"Tag 4 (drinks)": "",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "Writes",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "",
+"Tag 9 (tea)": "Drinks tea",
+"Tag 10 (strength)": "Strong",
+"Tag 11 (aim)": "",
+"Tag 12 (sex)": "Male"
+},
+{
+"Character": "Weapons master",
+"Tag 1 (group)": "Staff",
+"Tag 2 (role)": "Guard",
+"Tag 3 (access)": "",
+"Tag 4 (drinks)": "",
+"Tag 5 (reading)": "",
+"Tag 6 (writing)": "",
+"Tag 7 (teaching)": "",
+"Tag 8 (bedroom)": "",
+"Tag 9 (tea)": "Drinks tea",
+"Tag 10 (strength)": "Strong",
+"Tag 11 (aim)": "Marksman",
+"Tag 12 (sex)": "Male"
+},
+{
+"Character": "Librarian",
+"Tag 1 (group)": "Staff",
+"Tag 2 (role)": "Scholar",
+"Tag 3 (access)": "",
+"Tag 4 (drinks)": "",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "Writes",
+"Tag 7 (teaching)": "Tutor",
+"Tag 8 (bedroom)": "",
+"Tag 9 (tea)": "Drinks tea",
+"Tag 10 (strength)": "Strong",
+"Tag 11 (aim)": "",
+"Tag 12 (sex)": "Female"
+},
+{
+"Character": "Head of household",
+"Tag 1 (group)": "Staff",
+"Tag 2 (role)": "Steward",
+"Tag 3 (access)": "All-access",
+"Tag 4 (drinks)": "",
+"Tag 5 (reading)": "Reads",
+"Tag 6 (writing)": "Writes",
+"Tag 7 (teaching)": "Tutor",
+"Tag 8 (bedroom)": "Has bedroom",
+"Tag 9 (tea)": "Drinks tea",
+"Tag 10 (strength)": "",
+"Tag 11 (aim)": "",
+"Tag 12 (sex)": "Female"
+}
+],
+"methods": [
+{
+"Method": "Poisoned wine",
+"Time": "18:00",
+"Place": "Dining room",
+"Suspect tags": "Pantry-access OR All-access",
+"Victim tags": "Drinks",
+"Clues": "See tab \"Method Clues\""
+},
+{
+"Method": "Lured to a secret meeting",
+"Time": "18:30",
+"Place": "Small room 1–4 (random)",
+"Suspect tags": "Writes",
+"Victim tags": "Reads",
+"Clues": "See tab \"Method Clues\""
+},
+{
+"Method": "Crushed by the chandelier",
+"Time": "18:45",
+"Place": "Parlor room",
+"Suspect tags": "Any",
+"Victim tags": "Drinks tea",
+"Clues": "See tab \"Method Clues\""
+},
+{
+"Method": "Struck with a heavy book",
+"Time": "18:15",
+"Place": "Library",
+"Suspect tags": "Strong",
+"Victim tags": "Reads",
+"Clues": "See tab \"Method Clues\""
+},
+{
+"Method": "Shot from the balustrade",
+"Time": "19:00",
+"Place": "Throne room",
+"Suspect tags": "Marksman",
+"Victim tags": "Any",
+"Clues": "See tab \"Method Clues\""
+}
+],
+"groups": [
+{
+"Group": "A",
+"Purpose": "When and where",
+"Show chance": "100%",
+"Clues picked": "1",
+"Required for logic?": "Yes",
+"Note": "Without this, alibis mean nothing. May be subtle.",
+"Options in Method Clues": "6",
+"Options (Lured to a secret meeting)": "5",
+"Options (Crushed by the chandelier)": "6",
+"Options (Struck with a heavy book)": "5",
+"Options (Shot from the balustrade)": "6"
+},
+{
+"Group": "B",
+"Purpose": "Which method",
+"Show chance": "100%",
+"Clues picked": "1",
+"Required for logic?": "No",
+"Note": "Always shown, but should not be too obvious. Prefer Vague/Medium clues.",
+"Options in Method Clues": "9",
+"Options (Lured to a secret meeting)": "5",
+"Options (Crushed by the chandelier)": "6",
+"Options (Struck with a heavy book)": "5",
+"Options (Shot from the balustrade)": "6"
+},
+{
+"Group": "C",
+"Purpose": "Who can be the murderer",
+"Show chance": "50%",
+"Clues picked": "1",
+"Required for logic?": "No",
+"Note": "Optional. The solver adds alibis if it is not shown.",
+"Options in Method Clues": "5",
+"Options (Lured to a secret meeting)": "6",
+"Options (Crushed by the chandelier)": "3",
+"Options (Struck with a heavy book)": "4",
+"Options (Shot from the balustrade)": "4"
+},
+{
+"Group": "D",
+"Purpose": "Who can be the victim",
+"Show chance": "50%",
+"Clues picked": "1",
+"Required for logic?": "No",
+"Note": "Optional. The solver adds alibis if it is not shown.",
+"Options in Method Clues": "5",
+"Options (Lured to a secret meeting)": "4",
+"Options (Crushed by the chandelier)": "4",
+"Options (Struck with a heavy book)": "4",
+"Options (Shot from the balustrade)": "5"
+}
+],
+"methodClues": [
+{
+"Method": "Poisoned wine",
+"Group": "A",
+"ID": "A1",
+"Form": "Note",
+"Place": "Hallway",
+"Clue": "Royal dinner tonight at 18:00 in the dining room.",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "A",
+"ID": "A2",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"Dinner is at six sharp. The King hates waiting.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "A",
+"ID": "A3",
+"Form": "Document",
+"Place": "Dining room",
+"Clue": "Menu for tonight's royal dinner, to be served at 18:00.",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "A",
+"ID": "A4",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"Everyone will be at the table at six tonight, so the silver must be polished.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "A",
+"ID": "A5",
+"Form": "Visual",
+"Place": "Dining room",
+"Clue": "The table is already set for dinner. A small card on the King's plate reads \"6 o'clock\".",
+"Clarity": "Vague",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "A",
+"ID": "A6",
+"Form": "Witness",
+"Place": "Dining room",
+"Clue": "Princess: \"Dinner at six again. Father won't wait a single minute for anyone.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Princess is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B1",
+"Form": "Item",
+"Place": "Pantry",
+"Clue": "An empty vial with a skull label, hidden behind the wine barrels.",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B2",
+"Form": "Item",
+"Place": "Pantry",
+"Clue": "One wine bottle has a broken seal that was closed again with fresh wax.",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B3",
+"Form": "Document",
+"Place": "Library",
+"Clue": "A book about poisons, left open at the page on poisons that cannot be tasted in wine.",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B4",
+"Form": "Visual",
+"Place": "Pantry",
+"Clue": "A dead mouse lies next to a small puddle of spilled wine.",
+"Clarity": "Vague",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B5",
+"Form": "Witness",
+"Place": "Entrance Hall",
+"Clue": "Head Guard: \"Someone took the nightshade berries from the stash in the infirmary. Nasty stuff.\"",
+"Clarity": "Vague",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B6",
+"Form": "Item",
+"Place": "Pantry",
+"Clue": "A wine glass that smells oddly bitter, as if something was mixed in it.",
+"Clarity": "Vague",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B7",
+"Form": "Witness",
+"Place": "Infirmary",
+"Clue": "Doctor: \"Someone took a bottle of foxglove from my cabinet this morning.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B8",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"Someone tore the page about poisons out of the herbal book.\"",
+"Clarity": "Vague",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "B",
+"ID": "B9",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"Someone asked me really specific questions about edible poisons today, I told them I didn't know, it was a weird interaction.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "C",
+"ID": "C1",
+"Form": "Document",
+"Place": "Pantry door",
+"Clue": "Pantry key register: keys held by (list).",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "C",
+"ID": "C2",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"The pantry key? Besides myself, only (list) have one.\"",
+"Clarity": "Clear",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "C",
+"ID": "C3",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Head of household: \"Only the chef, the royal family and I may enter the pantry.\"",
+"Clarity": "Clear",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "C",
+"ID": "C4",
+"Form": "Witness",
+"Place": "Guards room",
+"Clue": "Head Guard: \"I hand out the pantry keys myself. Only (list) have one.\"",
+"Clarity": "Clear",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "C",
+"ID": "C5",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"I handed out the pantry key today to (partial list).\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "D",
+"ID": "D1",
+"Form": "Document",
+"Place": "Dining room",
+"Clue": "Seating plan: wine to be poured for (list).",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "D",
+"ID": "D2",
+"Form": "Document",
+"Place": "Pantry",
+"Clue": "Wine order for tonight: one glass each for (list).",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "D",
+"ID": "D3",
+"Form": "Witness",
+"Place": "Dining room",
+"Clue": "Head of household: \"Juice for the princess. She never drinks wine.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "D",
+"ID": "D4",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"I love a little taste of the wine before it goes to the table.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Poisoned wine",
+"Group": "D",
+"ID": "D5",
+"Form": "Witness",
+"Place": "Infirmary",
+"Clue": "Doctor: \"I've forbidden (excluded) to touch wine. Doctor's orders.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": "Wine"
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "A",
+"ID": "A1",
+"Form": "Item",
+"Place": "Hallway",
+"Clue": "A dropped note without a name: \"(place of murder). Half past six. Come alone, and burn this letter.\"",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "A",
+"ID": "A2",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"Someone asked me if anyone uses the (place of murder) around half past six. I told them nobody ever goes there.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Chef is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "A",
+"ID": "A3",
+"Form": "Document",
+"Place": "Library",
+"Clue": "Torn draft in the library waste basket: \"...the (place of murder) at half past six... tell no one...\"",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "A",
+"ID": "A4",
+"Form": "Visual",
+"Place": "(place of murder)",
+"Clue": "A candle and two cups are set out in the (place of murder). A scrap of paper next to them reads \"6:30\".",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "A",
+"ID": "A5",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"I heard someone whisper 'half past six, the (place of murder)' behind the library door.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "B",
+"ID": "B1",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"One of my knives is missing from the drawer.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Chef is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "B",
+"ID": "B3",
+"Form": "Item",
+"Place": "(place of murder)",
+"Clue": "A dagger is hidden in the (place of murder).",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "B",
+"ID": "B4",
+"Form": "Witness",
+"Place": "Armoury",
+"Clue": "Weapons master: \"One of my daggers is missing from the rack.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "B",
+"ID": "B7",
+"Form": "Item",
+"Place": "Armoury",
+"Clue": "An empty dagger sheath lies on the armoury floor.",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "B",
+"ID": "B9",
+"Form": "Witness",
+"Place": "Infirmary",
+"Clue": "Doctor: \"Someone asked me today whether a small puncture in the aorta would be fatal. Strange question.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "C",
+"ID": "C1",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"As far as I know, only (list) can write.\"",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "C",
+"ID": "C3",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"(excluded) cut their writing hand this morning. They can't hold a pen today.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": "Writing"
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "C",
+"ID": "C7",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"(list) are the only ones who ever ask me for paper and ink.\"",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "C",
+"ID": "C8",
+"Form": "Visual",
+"Place": "Guards room",
+"Clue": "The duty roster on the guards room door is signed with a cross by the Head Guard.",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "C",
+"ID": "C9",
+"Form": "Witness",
+"Place": "Armoury",
+"Clue": "Weapons master: \"Every week someone has to read the orders to me. I never learned my letters.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "C",
+"ID": "C10",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"Someone used my desk to write a letter today. It wasn't (excluded), they were with me all afternoon.\"",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": "Afternoon"
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "D",
+"ID": "D1",
+"Form": "Document",
+"Place": "Library",
+"Clue": "Library loan book: books borrowed this month by (list).",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "D",
+"ID": "D2",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"I delivered sealed letters today to (partial list).\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect or Victim)",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "D",
+"ID": "D3",
+"Form": "Visual",
+"Place": "Armoury",
+"Clue": "Notice on the armoury door: \"Orders for the Weapons master must be read out to him.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Lured to a secret meeting",
+"Group": "D",
+"ID": "D4",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Princess: \"Someone's getting secret letters! I saw (partial list) each reading something in a corner today.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Princess is not the Suspect or Victim)",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "A",
+"ID": "A1",
+"Form": "Document",
+"Place": "Kitchen",
+"Clue": "Tea schedule on the kitchen wall: \"Evening tea in the parlor, a quarter to seven.\"",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "A",
+"ID": "A2",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"Tea for one, in the parlor, at a quarter to seven. And I am expected to work miracles with a single scone.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "A",
+"ID": "A3",
+"Form": "Visual",
+"Place": "Parlor room",
+"Clue": "The tea table is set for one: a single cup, and a card reading \"6:45\".",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "A",
+"ID": "A4",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"I was asked to have the parlor ready by a quarter to seven.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "A",
+"ID": "A5",
+"Form": "Note",
+"Place": "Parlor room",
+"Clue": "Note on the parlor door: \"Reserved from 6:45. Please do not disturb.\"",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "A",
+"ID": "A6",
+"Form": "Witness",
+"Place": "Parlor room",
+"Clue": "Queen: \"Tea at a quarter to seven in the parlor is a castle tradition. Whoever's turn it is gets an hour of peace.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "B",
+"ID": "B2",
+"Form": "Item",
+"Place": "Parlor balustrade",
+"Clue": "A saw lies on the floor by the parlor balustrade.",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "B",
+"ID": "B5",
+"Form": "Witness",
+"Place": "Armoury",
+"Clue": "Weapons master: \"Someone borrowed my best saw this morning and never brought it back.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Weapons master is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "B",
+"ID": "B6",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"Someone asked me today how much our old chandeliers weigh. Strange question.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "B",
+"ID": "B7",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"Someone wanted to know how the parlor chandelier is hung. One rope, I told them, tied off up at the balustrade.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "B",
+"ID": "B8",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"Someone borrowed the old book on how this castle was built. The one with the drawings of the chandeliers.\"",
+"Clarity": "Vague",
+"Fixed text": "Yes (Librarian is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "B",
+"ID": "B9",
+"Form": "Witness",
+"Place": "Guards room",
+"Clue": "Head Guard: \"Someone told my men to keep off the parlor balustrade tonight. Said the railing is being repaired.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head Guard is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "C",
+"ID": "C3",
+"Form": "Witness",
+"Place": "Entrance",
+"Clue": "Head Guard: \"Today I saw (partial list) up at the parlor balustrade.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head Guard is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "C",
+"ID": "C6",
+"Form": "Witness",
+"Place": "Infirmary",
+"Clue": "Doctor: \"(excluded) burned both hands on a hot pan this morning. They can't grip a thing today.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can't be the Chef or the Head of household)",
+"Blocks": "Hands, Writing, Lifting"
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "C",
+"ID": "C7",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"(excluded) cut their palm on one of my knives this morning. A deep cut. They can't close that hand for the rest of the day.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can't be the Chef or the Head of household)",
+"Blocks": "Hands, Writing, Lifting"
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "D",
+"ID": "D1",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"Only (list) ever take tea in the parlor. The rest of this household has no taste.\"",
+"Clarity": "Clear",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "D",
+"ID": "D2",
+"Form": "Document",
+"Place": "Kitchen",
+"Clue": "Tea order book: tea served in the parlor this week to (partial list).",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "D",
+"ID": "D3",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"(excluded) never drinks tea. Wine, or nothing at all.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can only be someone without Drinks tea)",
+"Blocks": ""
+},
+{
+"Method": "Crushed by the chandelier",
+"Group": "D",
+"ID": "D4",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"(excluded) despises tea. Called the blend I prepare dishwater. Not that I touch the stuff myself.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can only be someone without Drinks tea)",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "A",
+"ID": "A1",
+"Form": "Note",
+"Place": "Library",
+"Clue": "Note on the library door: \"Quiet reading hour from a quarter past six. Do not disturb.\"",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "A",
+"ID": "A2",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"I was asked to make sure the library is empty by a quarter past six.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "A",
+"ID": "A3",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"Reading in the library at a quarter past six, just as my dinner reaches its climax. Some people have no sense of timing.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "A",
+"ID": "A4",
+"Form": "Visual",
+"Place": "Library",
+"Clue": "A reading lamp is already lit at the corner desk, next to a card reading \"6:15\".",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "A",
+"ID": "A5",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"The library is quietest at a quarter past six. That's when people come to read alone.\"",
+"Clarity": "Vague",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "B",
+"ID": "B5",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"The Great Chronicle of the Realm is gone from its shelf. Nobody ever borrows it. It's far too heavy to casually carry around.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Librarian is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "B",
+"ID": "B7",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"This morning someone in the library was weighing books in their hands, one after another. They didn't read a single one.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "B",
+"ID": "B9",
+"Form": "Witness",
+"Place": "Library",
+"Clue": "Librarian: \"Someone asked me to fit the Great Chronicle with iron corners. As if it weren't heavy enough already.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Librarian is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "B",
+"ID": "B11",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"Someone borrowed my kitchen scales this morning. They came back covered in old parchment dust. My scales are for flour, not for literature.\"",
+"Clarity": "Vague",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "B",
+"ID": "B12",
+"Form": "Witness",
+"Place": "Infirmary",
+"Clue": "Doctor: \"Someone came to me this morning with a broken toe. Dropped a book on it, they said. Must have been a monster of a book.\"",
+"Clarity": "Vague",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "C",
+"ID": "C3",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"(excluded) has the arms of a sparrow. I've seen them struggle with a bread basket.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can only be Head of household, Princess or Queen)",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "C",
+"ID": "C4",
+"Form": "Witness",
+"Place": "Weaponry",
+"Clue": "Weapons master: \"(excluded) couldn't swing anything heavier than a quill.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can only be Head of household, Princess or Queen)",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "C",
+"ID": "C5",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"(partial list) helped carry the heavy chests for the ball this week. Strong backs, all of them.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "C",
+"ID": "C8",
+"Form": "Witness",
+"Place": "Infirmary",
+"Clue": "Doctor: \"(excluded) threw out their back this morning. Doctor's orders: nothing heavier than a spoon today.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can only be someone with the tag Strong, but not the Librarian)",
+"Blocks": "Lifting"
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "D",
+"ID": "D1",
+"Form": "Document",
+"Place": "Library",
+"Clue": "Library loan book: books borrowed today by (partial list).",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "D",
+"ID": "D3",
+"Form": "Witness",
+"Place": "Guards room",
+"Clue": "Head Guard: \"The Weapons master can't read a word. I read him his orders myself.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "D",
+"ID": "D4",
+"Form": "Note",
+"Place": "Library",
+"Clue": "Note on the library desk: \"Reading desk reserved today by: (partial list).\"",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Struck with a heavy book",
+"Group": "D",
+"ID": "D5",
+"Form": "Witness",
+"Place": "Infirmary",
+"Clue": "Doctor: \"(excluded) broke their reading glasses this morning. They can't read a word until I've ground them a new pair.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can only be the King or the Queen)",
+"Blocks": "Sight"
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "A",
+"ID": "A1",
+"Form": "Note",
+"Place": "Throne room",
+"Clue": "Note on the throne room door: \"Rehearsal for the ball procession, seven o'clock.\"",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "A",
+"ID": "A2",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"There's a rehearsal for the ball in the throne room at seven tonight. I'll make sure the room stays lit.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "A",
+"ID": "A3",
+"Form": "Witness",
+"Place": "Guards room",
+"Clue": "Head Guard: \"Seven o'clock rehearsal in the throne room, and I've been told to keep my men out of the room for it.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "A",
+"ID": "A5",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"Dinner waits until after the seven o'clock rehearsal in the throne room. My soufflé will never forgive them.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "A",
+"ID": "A6",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Princess: \"Seven o'clock in the throne room, a rehearsal for the procession. As if anyone needs practice walking in a line.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "A",
+"ID": "A7",
+"Form": "Note",
+"Place": "Hallway",
+"Clue": "Notice: \"All who walk in the ball procession: throne room, seven o'clock.\"",
+"Clarity": "Clear",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "B",
+"ID": "B1",
+"Form": "Witness",
+"Place": "Weaponry",
+"Clue": "Weapons master: \"One of my crossbows is missing from the rack, and nobody asked me for it.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Weapons master is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "B",
+"ID": "B2",
+"Form": "Witness",
+"Place": "Guards room",
+"Clue": "Head Guard: \"Someone took three crossbow bolts from the practice targets this week. Those things are sharp.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head Guard is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "B",
+"ID": "B3",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"Someone asked for a chair by the throne room balustrade. Nobody ever sits up there.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "B",
+"ID": "B4",
+"Form": "Witness",
+"Place": "Study room",
+"Clue": "Queen: \"Someone has been shooting at the old targets in the guards wing all morning. I could hear it from the study.\"",
+"Clarity": "Vague",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "B",
+"ID": "B5",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"Someone moved the big candelabra away from the throne room balustrade. It's dark up there in the evenings now.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "B",
+"ID": "B6",
+"Form": "Witness",
+"Place": "Weaponry",
+"Clue": "Weapons master: \"Someone has been asking me how far a crossbow bolt flies before it drops.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Weapons master is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "C",
+"ID": "C1",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"(partial list) were at archery practice this week.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "C",
+"ID": "C2",
+"Form": "Witness",
+"Place": "Dining room",
+"Clue": "King: \"(partial list) rode out hunting with me this morning.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "C",
+"ID": "C3",
+"Form": "Witness",
+"Place": "Infirmary",
+"Clue": "Doctor: \"(excluded) woke up with a nasty eye infection this morning. They can barely see across a room today.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes ((excluded) can only be the King, Prince, Princess, Queen or Chef)",
+"Blocks": "Sight"
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "C",
+"ID": "C4",
+"Form": "Witness",
+"Place": "Guards room",
+"Clue": "Head Guard: \"(partial list) have borrowed crossbows from the guards' store this month.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head Guard is not the Suspect)",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "D",
+"ID": "D1",
+"Form": "Document",
+"Place": "Throne room",
+"Clue": "Order of the ball procession: (partial list).",
+"Clarity": "Medium",
+"Fixed text": "No",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "D",
+"ID": "D2",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"At seven, the throne room expects (partial list).\"",
+"Clarity": "Medium",
+"Fixed text": "Yes (Head of household is not the Victim)",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "D",
+"ID": "D3",
+"Form": "Witness",
+"Place": "Guards room",
+"Clue": "Head Guard: \"(excluded) won't be at the rehearsal tonight. They told me so themselves.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "D",
+"ID": "D4",
+"Form": "Witness",
+"Place": "Kitchen",
+"Clue": "Chef: \"I hear (partial list) are among those walking in the procession tonight. They'll all want supper after.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+},
+{
+"Method": "Shot from the balustrade",
+"Group": "D",
+"ID": "D5",
+"Form": "Witness",
+"Place": "Hallway",
+"Clue": "Head of household: \"(excluded) asked to be left out of the procession tonight.\"",
+"Clarity": "Medium",
+"Fixed text": "Yes",
+"Blocks": ""
+}
+],
+"motives": [
+{
+"Motive": "Succession to the throne",
+"Suspect tags": "Heir",
+"Victim tags": "Ruler",
+"Clues": "Written coronation speech in room of (Heir)",
+"Condition": ""
+},
+{
+"Motive": "Blackmail",
+"Suspect tags": "Any",
+"Victim tags": "Writes",
+"Clues": "Threatening letter from (Victim) to (Suspect)",
+"Condition": ""
+},
+{
+"Motive": "Debts",
+"Suspect tags": "Any",
+"Victim tags": "Any",
+"Clues": "Document: (Suspect) owes (Victim) 100 gold coins, to be paid before tomorrow",
+"Condition": ""
+},
+{
+"Motive": "Jealousy",
+"Suspect tags": "Any",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Suspect) is madly in love, but their sweetheart only has eyes for (Victim). You should have seen (Suspect)'s face this morning.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Fired",
+"Suspect tags": "Staff",
+"Victim tags": "Ruler",
+"Clues": "Order signed by (Victim): \"(Suspect) is fired tomorrow.\"",
+"Condition": ""
+},
+{
+"Motive": "Humiliation",
+"Suspect tags": "Staff",
+"Victim tags": "Royalty",
+"Clues": "Witness: \"(Victim) mocked (Suspect) in front of the whole court this morning.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Arranged marriage",
+"Suspect tags": "Heir",
+"Victim tags": "Ruler",
+"Clues": "Marriage contract signed by (Victim): (Suspect) must marry a foreign noble next month",
+"Condition": ""
+},
+{
+"Motive": "Unpaid wages",
+"Suspect tags": "Staff AND Writes",
+"Victim tags": "Royalty",
+"Clues": "Letter from (Suspect) to (Victim): \"A whole year without pay. This is my last warning.\"",
+"Condition": ""
+},
+{
+"Motive": "Losing their job to someone",
+"Suspect tags": "Staff",
+"Victim tags": "Staff",
+"Clues": "Order: \"(Suspect) has failed for the last time. From tomorrow, (Victim) takes over all their duties.\"",
+"Condition": "Suspect and Victim have the same role tag (e.g. both Guard)"
+},
+{
+"Motive": "Disinherited",
+"Suspect tags": "Royalty",
+"Victim tags": "Ruler",
+"Clues": "Draft of (Victim)'s will: \"(Suspect) receives nothing.\"",
+"Condition": ""
+},
+{
+"Motive": "Forbidden experiments",
+"Suspect tags": "Medical",
+"Victim tags": "Ruler",
+"Clues": "Royal decree signed by (Victim): \"All experiments in the infirmary are forbidden. If caught, (Suspect) will be banished.\"",
+"Condition": ""
+},
+{
+"Motive": "Test subject",
+"Suspect tags": "Any",
+"Victim tags": "Medical",
+"Clues": "Doctor's lab journal: \"Experiment 14. Subject: (Suspect), who was perfectly healthy. Secretly mixed my new potion into their tea. Side effects: hair loss, nightmares. Fascinating!\"",
+"Condition": ""
+},
+{
+"Motive": "Silencing a witness",
+"Suspect tags": "Any",
+"Victim tags": "Any",
+"Clues": "Witness: \"Ever since the silver went missing, (Victim) hasn't taken their eyes off (Suspect).\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Forbidden love",
+"Suspect tags": "Heir",
+"Victim tags": "Ruler",
+"Clues": "Letter signed by (Victim): \"(Suspect) may never marry a servant. The servant leaves the castle tomorrow.\"",
+"Condition": ""
+},
+{
+"Motive": "Destroyed life's work",
+"Suspect tags": "Writes",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) threw the book (Suspect) spent ten years writing into the fire.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Rumours",
+"Suspect tags": "Any",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) tells everyone that (Suspect) is a thief. Nobody trusts (Suspect) anymore.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Foreign dealings",
+"Suspect tags": "Weapons master",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) saw (Suspect) selling the crown's weapons to our enemies across the border.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Hidden debts",
+"Suspect tags": "Prince",
+"Victim tags": "Writes",
+"Clues": "Letter from (Victim) to (Suspect): \"Pay me, or the whole court learns how deep in debt you are.\"",
+"Condition": ""
+},
+{
+"Motive": "The foreign queen",
+"Suspect tags": "Head Guard",
+"Victim tags": "Queen",
+"Clues": "Witness: \"(Suspect) said it out loud: the foreign queen will be the ruin of this kingdom.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The hedge-witch",
+"Suspect tags": "Doctor",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) keeps warning everyone that (Suspect) is a hedge-witch's son who practises witchcraft in the castle.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Insulted his food",
+"Suspect tags": "Chef",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) spat out (Suspect)'s soup in front of the whole court and called it pig slop.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Mocked the old warrior",
+"Suspect tags": "King",
+"Victim tags": "Royalty",
+"Clues": "Witness: \"(Victim) laughed that (Suspect) can't even lift his own sword anymore.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Knows too much",
+"Suspect tags": "Any",
+"Victim tags": "Head of household",
+"Clues": "Witness: \"(Victim) keeps the household books. She told (Suspect) to their face that the numbers don't add up, and that she'll report it tomorrow.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The old cook's fall",
+"Suspect tags": "Chef",
+"Victim tags": "Writes",
+"Clues": "Letter from (Victim) to (Suspect): \"I know how you really became Master Chef. The old cook didn't fall down those stairs by accident.\"",
+"Condition": ""
+},
+{
+"Motive": "Protecting the staff",
+"Suspect tags": "Head of household",
+"Victim tags": "Royalty",
+"Clues": "Witness: \"(Victim) wants a kitchen girl thrown in the dungeon for breaking a cup. (Suspect) begged, but (Victim) wouldn't listen.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "A dangerous mistake",
+"Suspect tags": "Head of household",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) found out that (Suspect) let a stranger into the castle last week, and threatens to tell the King.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Unfit for the crown",
+"Suspect tags": "Head Guard",
+"Victim tags": "Heir",
+"Clues": "Witness: \"(Suspect) said the crown should never go to someone as weak as (Victim).\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Protecting the poor",
+"Suspect tags": "Prince",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) wants to drive a poor family off the castle lands. (Suspect) swore he'd stop it, whatever it takes.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Her reputation",
+"Suspect tags": "Princess",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) has been telling the whole court an embarrassing secret about (Suspect). She is furious.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "War on her homeland",
+"Suspect tags": "Queen",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) keeps pushing the King to march on (Suspect)'s homeland.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Next on the table",
+"Suspect tags": "Any",
+"Victim tags": "Doctor",
+"Clues": "Witness: \"(Suspect) is convinced (Victim) will use them in his next experiment. They can't sleep anymore.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The traitor",
+"Suspect tags": "Head Guard",
+"Victim tags": "Weapons master",
+"Clues": "Witness: \"(Suspect) found out that (Victim) sells weapons to our enemies. A traitor, he calls him.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Too much gossip",
+"Suspect tags": "Any",
+"Victim tags": "Princess",
+"Clues": "Witness: \"(Victim) knows (Suspect)'s secret, and she can never keep her mouth shut.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Experiment 15",
+"Suspect tags": "Doctor",
+"Victim tags": "Any",
+"Clues": "Doctor's lab journal: \"Experiment 15 requires blood from (Victim). A rare type, and a few drops will not do. It must be obtained soon.\"",
+"Condition": ""
+},
+{
+"Motive": "The forbidden book",
+"Suspect tags": "Any",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) caught (Suspect) reading a forbidden book of dark magic, and wants to tell the King.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Secret in the archives",
+"Suspect tags": "Any",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) found something in the royal archives about (Suspect)'s real parents.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Stolen words",
+"Suspect tags": "Writes",
+"Victim tags": "Writes",
+"Clues": "Witness: \"(Victim) read (Suspect)'s poems aloud at court and claimed they were their own.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Close to the truth",
+"Suspect tags": "Any",
+"Victim tags": "Head Guard",
+"Clues": "Witness: \"(Victim) says he is close to proving that (Suspect) is plotting against the crown.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The queen's influence",
+"Suspect tags": "Any",
+"Victim tags": "Queen",
+"Clues": "Witness: \"(Suspect) says (Victim) has the King wrapped around her finger, and the whole realm with him.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "A king for the people",
+"Suspect tags": "Any",
+"Victim tags": "Prince",
+"Clues": "Witness: \"(Suspect) fears that (Victim) will strip them of their lands as soon as he is king.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The feasting king",
+"Suspect tags": "Any",
+"Victim tags": "King",
+"Clues": "Witness: \"(Suspect) says (Victim) lets the common people starve while he feasts.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The council seat",
+"Suspect tags": "Any",
+"Victim tags": "Ruler",
+"Clues": "Witness: \"(Victim) promised (Suspect) a seat on the royal council, then gave it to someone else.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Thrown out of court",
+"Suspect tags": "Any",
+"Victim tags": "Ruler OR Head of household",
+"Clues": "Witness: \"(Victim) had (Suspect) thrown out of court in front of everyone.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The missed stag",
+"Suspect tags": "Marksman",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) still laughs at (Suspect) for missing the stag at the last royal hunt.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The forged seal",
+"Suspect tags": "Staff OR Heir",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) knows (Suspect) forged the King's seal on a royal decree.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The chef's insult",
+"Suspect tags": "Any",
+"Victim tags": "Chef",
+"Clues": "Witness: \"(Victim) called (Suspect) a tasteless fool, in front of the whole kitchen.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Blocking the reforms",
+"Suspect tags": "Any",
+"Victim tags": "Head Guard",
+"Clues": "Witness: \"(Suspect) supports the new reforms, and (Victim) has sworn to block them as long as he commands the guard.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The unpaid sword",
+"Suspect tags": "Any",
+"Victim tags": "Weapons master",
+"Clues": "Witness: \"(Suspect) owes (Victim) a fortune for a sword he made, and (Victim) wants every coin by tomorrow.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The borrowing record",
+"Suspect tags": "Any",
+"Victim tags": "Librarian",
+"Clues": "Witness: \"(Victim) keeps a record of every book (Suspect) borrowed, and some of those books are forbidden.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Lost at cards",
+"Suspect tags": "Any",
+"Victim tags": "Royalty",
+"Clues": "Witness: \"(Suspect) lost a fortune to (Victim) at cards this morning, and (Victim) wants it paid tonight.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Caught red-handed",
+"Suspect tags": "Staff",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) caught (Suspect) with a royal ring in their pocket this morning, and will report it tomorrow.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Revenge for a brother",
+"Suspect tags": "Staff",
+"Victim tags": "Royalty",
+"Clues": "Witness: \"(Suspect) said this morning that (Victim) will pay for what happened to their brother.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The secret affair",
+"Suspect tags": "Any",
+"Victim tags": "Writes",
+"Clues": "Letter from (Victim) to the King: \"(Suspect) is having a secret affair. You deserve to know.\"",
+"Condition": "Suspect is not the King"
+},
+{
+"Motive": "The search",
+"Suspect tags": "Any",
+"Victim tags": "Guard",
+"Clues": "Witness: \"(Victim) searched (Suspect)'s things this morning and found something. (Suspect) went white as a sheet.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Refused to help",
+"Suspect tags": "Staff",
+"Victim tags": "Medical",
+"Clues": "Witness: \"(Victim) refused to treat (Suspect)'s sick sister in the village this morning. She's only getting worse.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Sibling rivalry",
+"Suspect tags": "Heir",
+"Victim tags": "Heir",
+"Clues": "Witness: \"(Victim) told the King this morning that (Suspect) is unfit to rule. And the King listened.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "A royal quarrel",
+"Suspect tags": "Ruler",
+"Victim tags": "Ruler",
+"Clues": "Witness: \"The whole hallway heard (Suspect) and (Victim) shouting this morning. (Suspect) yelled: 'Over my dead body. Or yours!'\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Public shame",
+"Suspect tags": "Staff",
+"Victim tags": "Ruler",
+"Clues": "Witness: \"(Victim) ordered (Suspect) to be locked up on the village square tomorrow, for the whole village to throw rotten eggs at.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Half wages",
+"Suspect tags": "Staff",
+"Victim tags": "Head of household",
+"Clues": "Witness: \"(Victim) cut (Suspect)'s wages in half this morning.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Banned from the library",
+"Suspect tags": "Reads, but not Ruler",
+"Victim tags": "Librarian",
+"Clues": "Witness: \"(Victim) banned (Suspect) from the library for good this morning, in front of everyone.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Beaten at swordplay",
+"Suspect tags": "Strong",
+"Victim tags": "Weapons master",
+"Clues": "Witness: \"(Victim) beat (Suspect) at swordplay this morning, in front of the whole court, and laughed.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "A rejected proposal",
+"Suspect tags": "Staff",
+"Victim tags": "Heir",
+"Clues": "Witness: \"(Suspect) asked (Victim) to marry them this morning. (Victim) laughed out loud.\"",
+"Condition": "Witness is not Suspect or Victim; Suspect and Victim have a different sex"
+},
+{
+"Motive": "Spoiled fish",
+"Suspect tags": "Any",
+"Victim tags": "Chef",
+"Clues": "Witness: \"(Victim) served (Suspect) spoiled fish this morning, as revenge for a complaint. (Suspect) was ill all morning.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The arrest",
+"Suspect tags": "Staff",
+"Victim tags": "Head Guard",
+"Clues": "Witness: \"(Victim) arrested (Suspect)'s nephew in the village this morning. The boy might be banished from the kingdom.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Torn pages",
+"Suspect tags": "Librarian",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Suspect) saw (Victim) tearing pages out of the oldest book in the library this morning.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "The finest bottle",
+"Suspect tags": "Drinks",
+"Victim tags": "Any",
+"Clues": "Witness: \"(Victim) poured (Suspect)'s finest bottle of wine out of the window this morning.\"",
+"Condition": "Witness is not Suspect or Victim"
+},
+{
+"Motive": "Private letters",
+"Suspect tags": "Writes",
+"Victim tags": "Reads",
+"Clues": "Witness: \"(Victim) read (Suspect)'s private letters this morning. Now they know everything.\"",
+"Condition": "Witness is not Suspect or Victim"
+}
+],
+"alibis": [
+{
+"Activity / Alibi": "Buying ingredients",
+"Characters": "Chef",
+"From": "18:00",
+"To": "22:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Chef says he will be leaving OR Note saying he left",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Sick",
+"Characters": "Any",
+"From": "00:00",
+"To": "24:00",
+"Alibi tag": "Inside",
+"Alibi place": "Infirmary",
+"Clues": "Doctor saying character is sick AND/OR seeing character in Infirmary",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Fencing Lessons",
+"Characters": "Prince & Weapons master",
+"From": "17:00",
+"To": "22:00",
+"Alibi tag": "Inside",
+"Alibi place": "Weaponry",
+"Clues": "Prince or Weapons master saying they are busy that evening",
+"Condition": "",
+"Needs": "Hands, Sight"
+},
+{
+"Activity / Alibi": "Baking big cake",
+"Characters": "Chef",
+"From": "12:00",
+"To": "24:00",
+"Alibi tag": "Inside",
+"Alibi place": "Kitchen",
+"Clues": "Chef: \"Leave me alone, this big cake must be done by midnight!\" OR Note on kitchen door: \"Busy with the big cake until midnight. Keep out!\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "State visit",
+"Characters": "King & Queen",
+"From": "17:00",
+"To": "24:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Letter on desk saying character travels to the neighbouring kingdom tonight",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Lessons with tutor",
+"Characters": "Prince & Princess",
+"From": "15:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Library",
+"Clues": "(Tutor) saying lessons last until eight OR Lesson schedule",
+"Condition": "Tutor is busy too",
+"Needs": "Sight"
+},
+{
+"Activity / Alibi": "Visiting a patient",
+"Characters": "Doctor",
+"From": "17:00",
+"To": "22:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Doctor: \"Tonight I have to visit a patient in the village. I won't be back before ten.\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Caring for the sick",
+"Characters": "Doctor",
+"From": "17:00",
+"To": "24:00",
+"Alibi tag": "Inside",
+"Alibi place": "Infirmary",
+"Clues": "Doctor: \"I'll be caring for (sick character) all evening. I can't leave their side.\"",
+"Condition": "Only if another character has the alibi Sick",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Brewing medicine",
+"Characters": "Doctor",
+"From": "15:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Infirmary",
+"Clues": "Doctor: \"I can't leave, this medicine has to boil until eight.\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Night watch",
+"Characters": "Head Guard",
+"From": "17:00",
+"To": "23:00",
+"Alibi tag": "Inside",
+"Alibi place": "Entrance",
+"Clues": "Duty roster OR Head Guard saying he has the night watch at the entrance tonight",
+"Condition": "",
+"Needs": "Sight, Hands"
+},
+{
+"Activity / Alibi": "Sharpening weapons",
+"Characters": "Weapons master",
+"From": "16:00",
+"To": "23:00",
+"Alibi tag": "Inside",
+"Alibi place": "Armoury",
+"Clues": "Weapons master: \"I'm sharpening every weapon in the castle. I'll be busy until late tonight.\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Early to bed",
+"Characters": "Any",
+"From": "17:00",
+"To": "24:00",
+"Alibi tag": "Inside",
+"Alibi place": "Bedroom",
+"Clues": "Character saying they will go to bed early with a headache OR Note on bedroom door: \"Do not disturb, (character) is sleeping\"",
+"Condition": "Note on bedroom door only if the character has the tag Has bedroom",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Evening off",
+"Characters": "Staff",
+"From": "17:00",
+"To": "24:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Staff board in kitchen: \"(character) – evening off\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Royal check-up",
+"Characters": "Doctor & King, Queen, Prince or Princess",
+"From": "17:00",
+"To": "19:00",
+"Alibi tag": "Inside",
+"Alibi place": "Infirmary",
+"Clues": "Doctor: \"I'm examining (character) tonight. Royal health comes first.\"",
+"Condition": "Doctor is busy too",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Reading in the library",
+"Characters": "Reads",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Library",
+"Clues": "Librarian: \"(character) asked me to keep the library open and the lamps lit until eight.\"",
+"Condition": "",
+"Needs": "Sight"
+},
+{
+"Activity / Alibi": "Helping in the kitchen",
+"Characters": "Staff",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Kitchen",
+"Clues": "Chef: \"(character) is helping me with the preparations until eight.\"",
+"Condition": "Chef is busy too",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Royal accounts",
+"Characters": "Ruler",
+"From": "17:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Study room",
+"Clues": "(character) saying they'll be doing the royal accounts in the study room all evening",
+"Condition": "",
+"Needs": "Writing, Sight"
+},
+{
+"Activity / Alibi": "Counting the silver",
+"Characters": "Head of household",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Kitchen",
+"Clues": "Head of household: \"I'll be counting every spoon of the silver tonight. Someone has been stealing.\"",
+"Condition": "",
+"Needs": "Hands, Sight"
+},
+{
+"Activity / Alibi": "Dance rehearsal",
+"Characters": "Princess",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Ballroom",
+"Clues": "Princess: \"I'm rehearsing my dance in the ballroom until eight. Everyone will be watching me.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Feast with old comrades",
+"Characters": "King",
+"From": "18:00",
+"To": "23:00",
+"Alibi tag": "Inside",
+"Alibi place": "Dining room",
+"Clues": "King: \"Tonight I dine with my old war comrades! We'll be at it until late.\"",
+"Condition": "",
+"Needs": "Wine, Hands"
+},
+{
+"Activity / Alibi": "Letters to her homeland",
+"Characters": "Queen",
+"From": "17:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Study room",
+"Clues": "Queen: \"I have letters to write to my homeland tonight. I'll be in the study until nine.\"",
+"Condition": "",
+"Needs": "Writing, Sight"
+},
+{
+"Activity / Alibi": "Meeting a merchant",
+"Characters": "Weapons master",
+"From": "17:00",
+"To": "22:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Weapons master: \"A merchant in the village wants to see my work tonight. Good money.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Cataloguing new books",
+"Characters": "Librarian",
+"From": "16:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Library",
+"Clues": "Librarian: \"A crate of new books arrived from the capital. I'll be cataloguing them in the library until nine.\"",
+"Condition": "",
+"Needs": "Writing, Sight"
+},
+{
+"Activity / Alibi": "Teaching the kitchen staff",
+"Characters": "Librarian",
+"From": "18:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Kitchen",
+"Clues": "Librarian: \"Tonight I teach the kitchen staff their letters, from six until eight.\"",
+"Condition": "",
+"Needs": "Writing, Sight"
+},
+{
+"Activity / Alibi": "Preparing the guest rooms",
+"Characters": "Head of household",
+"From": "17:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Guest room",
+"Clues": "Head of household: \"Guests arrive tomorrow. I'll be preparing the guest rooms until nine.\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Drilling the guards",
+"Characters": "Head Guard",
+"From": "17:00",
+"To": "19:30",
+"Alibi tag": "Inside",
+"Alibi place": "Guards room",
+"Clues": "Head Guard: \"Drill and inspection for the whole guard tonight, from five until half past seven. No exceptions.\"",
+"Condition": "",
+"Needs": "Sight"
+},
+{
+"Activity / Alibi": "Bread for the poor",
+"Characters": "Prince",
+"From": "17:00",
+"To": "22:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Prince: \"Tonight I bring bread to the families in the lower town. I'll be back late.\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Tea with the ladies of the court",
+"Characters": "Princess",
+"From": "17:00",
+"To": "19:00",
+"Alibi tag": "Inside",
+"Alibi place": "Pavilion",
+"Clues": "Princess: \"The ladies of the court are coming for tea in the pavilion tonight. I'll hear all the news first.\"",
+"Condition": "Not with the method Crushed by the chandelier",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "War stories for the guards",
+"Characters": "King",
+"From": "18:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Guards room",
+"Clues": "King: \"The young guards want to hear about my battles tonight! Can't disappoint them.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Selecting the wines",
+"Characters": "Chef",
+"From": "17:00",
+"To": "19:00",
+"Alibi tag": "Inside",
+"Alibi place": "Pantry",
+"Clues": "Chef: \"I shall be selecting the wines for tomorrow's banquet. It requires a refined palate and absolute silence.\"",
+"Condition": "",
+"Needs": "Wine, Hands"
+},
+{
+"Activity / Alibi": "Restoring the old maps",
+"Characters": "Librarian",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Study room",
+"Clues": "Librarian: \"I'm restoring the old castle maps in the study tonight. Delicate work, until eight.\"",
+"Condition": "",
+"Needs": "Hands, Sight"
+},
+{
+"Activity / Alibi": "Counting the infirmary stores",
+"Characters": "Head of household",
+"From": "17:00",
+"To": "19:00",
+"Alibi tag": "Inside",
+"Alibi place": "Infirmary",
+"Clues": "Head of household: \"Tonight the Doctor and I count every bottle in the infirmary.\"",
+"Condition": "Doctor is busy too",
+"Needs": "Hands, Sight"
+},
+{
+"Activity / Alibi": "Polishing the King's armour",
+"Characters": "Weapons master",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Weaponry",
+"Clues": "Weapons master: \"The King wants his old armour polished for the ball. I'll be in the weaponry until eight.\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "The remarkable toad",
+"Characters": "Doctor",
+"From": "17:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Infirmary",
+"Clues": "Doctor: \"Tonight I dissect a truly remarkable toad. It cannot wait a minute longer.\"",
+"Condition": "",
+"Needs": "Hands, Sight"
+},
+{
+"Activity / Alibi": "Cards with the lords",
+"Characters": "Prince",
+"From": "17:00",
+"To": "22:00",
+"Alibi tag": "Inside",
+"Alibi place": "Pavilion",
+"Clues": "Prince: \"Some lords invited me to a game of cards in the pavilion tonight.\"",
+"Condition": "",
+"Needs": "Hands, Sight"
+},
+{
+"Activity / Alibi": "Supper with the ambassador's wife",
+"Characters": "Queen",
+"From": "18:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Pavilion",
+"Clues": "Queen: \"The ambassador's wife joins me for supper in the pavilion tonight. Diplomacy never sleeps.\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Escorting the treasurer",
+"Characters": "Head Guard",
+"From": "18:00",
+"To": "22:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Head Guard: \"Tonight I escort the treasurer's carriage to the village. I trust no one else with it.\"",
+"Condition": "",
+"Needs": "Sight, Hands"
+},
+{
+"Activity / Alibi": "Interviewing new maids",
+"Characters": "Head of household",
+"From": "18:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Staff room",
+"Clues": "Head of household: \"Three new maids come to be interviewed tonight. I'll be in the staff room until eight.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Trying on gowns",
+"Characters": "Princess",
+"From": "18:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Bedroom",
+"Clues": "Princess: \"The dressmaker comes at six with my gowns for the ball. I'll be trying them on until eight.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Tasting the banquet",
+"Characters": "Chef & King",
+"From": "18:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Dining room",
+"Clues": "Chef: \"Tonight the King tastes my banquet menu. Seven courses, each one a masterpiece.\"",
+"Condition": "King is busy too",
+"Needs": "Wine, Hands"
+},
+{
+"Activity / Alibi": "Judging the cooking contest",
+"Characters": "Chef",
+"From": "17:00",
+"To": "21:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Chef: \"The village has begged me to judge their cooking contest tonight. Someone must show them what taste is.\"",
+"Condition": "",
+"Needs": "Hands"
+},
+{
+"Activity / Alibi": "Report to the council",
+"Characters": "Head Guard",
+"From": "17:30",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Study room",
+"Clues": "Head Guard: \"The lords of the council want my report on the castle's defences tonight. I'll be in the study until eight.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Listening to the townsfolk",
+"Characters": "Prince",
+"From": "17:00",
+"To": "21:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Prince: \"Tonight I hear the troubles of the townsfolk in the village hall. Someone has to listen to them.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "A talk at the village school",
+"Characters": "Librarian",
+"From": "17:30",
+"To": "20:30",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "Librarian: \"I'm giving a talk on the history of the castle at the village school tonight.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "A colleague from the capital",
+"Characters": "Doctor",
+"From": "17:00",
+"To": "21:00",
+"Alibi tag": "Inside",
+"Alibi place": "Guest room",
+"Clues": "Doctor: \"A colleague from the capital is visiting. We'll be talking medicine in the guest room until nine.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "The household budget",
+"Characters": "Head of household",
+"From": "17:00",
+"To": "19:30",
+"Alibi tag": "Inside",
+"Alibi place": "Study room",
+"Clues": "Head of household: \"The Queen and I go over the household budget tonight, in the study.\"",
+"Condition": "Queen is busy too",
+"Needs": "Sight"
+},
+{
+"Activity / Alibi": "Singing lesson",
+"Characters": "Princess",
+"From": "18:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Pavilion",
+"Clues": "Princess: \"My singing master comes at six. I'll be in the pavilion until eight, and everyone will hear me.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "The old general",
+"Characters": "King",
+"From": "18:00",
+"To": "22:00",
+"Alibi tag": "Inside",
+"Alibi place": "Throne room",
+"Clues": "King: \"My old general rides in tonight! We'll be talking battles in the throne room until late.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Inspecting the armoury",
+"Characters": "Weapons master",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Armoury",
+"Clues": "Weapons master: \"Tonight the Head Guard and I go through the whole armoury, rack by rack.\"",
+"Condition": "Head Guard is busy too",
+"Needs": "Sight"
+},
+{
+"Activity / Alibi": "Visiting family",
+"Characters": "Staff",
+"From": "17:00",
+"To": "21:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "(character): \"My sister in the village had a baby today. I'm going to see her tonight.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Letters in the study",
+"Characters": "Writes",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Study room",
+"Clues": "(character): \"I have a stack of letters to answer tonight. I'll be in the study until eight.\"",
+"Condition": "",
+"Needs": "Writing, Sight"
+},
+{
+"Activity / Alibi": "Crossbow practice",
+"Characters": "Marksman",
+"From": "17:00",
+"To": "19:30",
+"Alibi tag": "Inside",
+"Alibi place": "Weaponry",
+"Clues": "(character): \"I'm practising with the crossbow in the weaponry tonight, until half past seven.\"",
+"Condition": "",
+"Needs": "Hands, Sight"
+},
+{
+"Activity / Alibi": "The innkeeper's birthday",
+"Characters": "Drinks",
+"From": "18:00",
+"To": "23:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "(character): \"It's the innkeeper's birthday today. I'll be at the tavern in the village tonight.\"",
+"Condition": "",
+"Needs": "Wine"
+},
+{
+"Activity / Alibi": "A game of chess",
+"Characters": "Any & Any",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Inside",
+"Alibi place": "Pavilion",
+"Clues": "(character): \"(Partner) has challenged me to chess in the pavilion tonight. It'll take hours.\"",
+"Condition": "Partner is busy too",
+"Needs": "Sight, Hands"
+},
+{
+"Activity / Alibi": "Evening mass",
+"Characters": "Any",
+"From": "18:00",
+"To": "20:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "(character): \"It's a saint's day today. I'm going to evening mass in the village church.\"",
+"Condition": "",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Summoned to the study",
+"Characters": "Staff & Ruler",
+"From": "17:30",
+"To": "19:30",
+"Alibi tag": "Inside",
+"Alibi place": "Study room",
+"Clues": "(character): \"(Partner) has summoned me to the study tonight. We have much to discuss.\"",
+"Condition": "Partner is busy too",
+"Needs": "None"
+},
+{
+"Activity / Alibi": "Riding out",
+"Characters": "Royalty",
+"From": "17:00",
+"To": "20:00",
+"Alibi tag": "Outside",
+"Alibi place": "",
+"Clues": "(character): \"I'm riding out to the lake tonight. I need some air.\"",
+"Condition": "",
+"Needs": "Hands"
+}
+],
+"contraGeneral": [
+{
+"name": "Not going where they said they were",
+"tags": "Any",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "'(Suspect) told me he'd be at (place of murder), not (place of alibi) tonight'"
+},
+{
+"name": "No one can go outside",
+"tags": "Outside",
+"cond": "All others Inside",
+"form": "Visual/Note",
+"place": "Front door",
+"clue": "Note saying front door is broken for today"
+},
+{
+"name": "Place closed tonight",
+"tags": "Inside",
+"cond": "Nobody else has an alibi at that place",
+"form": "Note",
+"place": "Hallway",
+"clue": "Note saying the (place of alibi) is closed tonight for repairs"
+},
+{
+"name": "Reminder note",
+"tags": "Any",
+"cond": "Only if Suspect has the tag Has bedroom",
+"form": "Note",
+"place": "(Suspect)'s bedroom",
+"clue": "Note in (Suspect)'s handwriting: \"(time of murder), (place of murder). Don't be late.\""
+},
+{
+"name": "Different story",
+"tags": "Any",
+"cond": "Other place is not the alibi place or the murder place",
+"form": "Witness",
+"place": "Hallway",
+"clue": "\"(Suspect) told me they'll be in the (other place) tonight.\""
+},
+{
+"name": "Partner knows nothing",
+"tags": "Any",
+"cond": "Only for alibis with a second character (Lessons with tutor, Fencing Lessons, A game of chess, Summoned to the study)",
+"form": "Witness",
+"place": "(place of alibi)",
+"clue": "(Partner): \"Tonight with (Suspect)? We have nothing planned.\""
+},
+{
+"name": "Checking the door",
+"tags": "Any",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "\"I saw (Suspect) trying the door of the (place of murder) twice this afternoon.\""
+},
+{
+"name": "Dark cloak",
+"tags": "Any",
+"cond": "Head of household is not the Suspect",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"(Suspect) asked me for a dark cloak for tonight.\""
+},
+{
+"name": "Spare key",
+"tags": "Any",
+"cond": "Head of household is not the Suspect",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"(Suspect) asked me for the spare key to the (place of murder) today.\""
+},
+{
+"name": "Gate list",
+"tags": "Outside",
+"cond": "Head Guard is not the Suspect; nobody else has an Outside alibi",
+"form": "Witness",
+"place": "Entrance",
+"clue": "Head Guard: \"Nobody is on my list to leave through the gate tonight.\""
+},
+{
+"name": "Quickest route",
+"tags": "Any",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "\"(Suspect) asked me the quickest route from the (place of murder) to the castle gates.\""
+},
+{
+"name": "Cancelled plans",
+"tags": "Any",
+"cond": "Head of household is not the Suspect; not for the alibis Sick and Early to bed",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"(Suspect) told me to cancel everything they had planned for tonight.\""
+},
+{
+"name": "Cover for me",
+"tags": "Any",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "\"(Suspect) asked me to cover for them tonight. If anyone asks, I'm to say they were in the (place of alibi).\""
+},
+{
+"name": "Take my place",
+"tags": "Any",
+"cond": "Not for the alibis Sick and Early to bed",
+"form": "Witness",
+"place": "Hallway",
+"clue": "\"(Suspect) asked me to take their place at the (place of alibi) tonight.\""
+}
+],
+"contraSpecific": [
+{
+"name": "Visit postponed",
+"tags": "State visit",
+"cond": "",
+"form": "Document",
+"place": "Throne room",
+"clue": "Letter from the neighbouring kingdom: \"Our king has fallen ill. Tonight's visit is called off.\""
+},
+{
+"name": "Cake already finished",
+"tags": "Baking big cake",
+"cond": "",
+"form": "Visual",
+"place": "Pantry",
+"clue": "The big cake already stands finished and decorated in the pantry."
+},
+{
+"name": "Watch cancelled",
+"tags": "Night watch",
+"cond": "",
+"form": "Document",
+"place": "Guards room",
+"clue": "Updated duty roster: \"Night watch tonight cancelled.\""
+},
+{
+"name": "Broken grindstone",
+"tags": "Sharpening weapons",
+"cond": "",
+"form": "Visual",
+"place": "Armoury",
+"clue": "The grindstone in the armoury is cracked in two. Nothing can be sharpened with it."
+},
+{
+"name": "Medicine already done",
+"tags": "Brewing medicine",
+"cond": "",
+"form": "Visual",
+"place": "Infirmary",
+"clue": "The medicine is already bottled and labelled \"ready\"."
+},
+{
+"name": "Patient is fine",
+"tags": "Visiting a patient",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The doctor's patient in the village is my brother. I saw him at the market this morning, healthy as a horse.\""
+},
+{
+"name": "Ordered supper",
+"tags": "Early to bed",
+"cond": "",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"(Suspect) asked me for a big supper tonight. Strange, for someone with a headache.\""
+},
+{
+"name": "Silver already counted",
+"tags": "Counting the silver",
+"cond": "",
+"form": "Visual",
+"place": "Kitchen",
+"clue": "A note on the silver chest: \"Counted and correct, this morning.\""
+},
+{
+"name": "Rehearsals cancelled",
+"tags": "Dance rehearsal",
+"cond": "",
+"form": "Note",
+"place": "Ballroom door",
+"clue": "Note on the ballroom door: \"All rehearsals cancelled tonight.\""
+},
+{
+"name": "Comrades can't come",
+"tags": "Feast with old comrades",
+"cond": "",
+"form": "Document",
+"place": "Dining room",
+"clue": "Letter: \"Your Majesty, we regret that we cannot come tonight.\""
+},
+{
+"name": "Letters already sent",
+"tags": "Letters to her homeland",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The morning messenger took all of the Queen's letters to her homeland. She told me she has nothing left to write today.\""
+},
+{
+"name": "Merchant is gone",
+"tags": "Meeting a merchant",
+"cond": "",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"The village cooks told me the foreign merchant left the village yesterday, but never paid for his dinners. Extraordinarily rude.\""
+},
+{
+"name": "Books delayed",
+"tags": "Cataloguing new books",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The crate of books from the capital didn't come today. The cart is stuck on the road.\""
+},
+{
+"name": "Drill cancelled",
+"tags": "Drilling the guards",
+"cond": "",
+"form": "Note",
+"place": "Guards room",
+"clue": "Note on the guards room door: \"Drill cancelled tonight. Guards: free evening.\""
+},
+{
+"name": "No ladies coming",
+"tags": "Tea with the ladies of the court",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"No ladies of the court are coming today. Their carriages are all in the capital.\""
+},
+{
+"name": "Guards are away",
+"tags": "War stories for the guards",
+"cond": "",
+"form": "Witness",
+"place": "Guards room",
+"clue": "Head Guard: \"The young guards are on duty in the village all evening.\""
+},
+{
+"name": "Wines already chosen",
+"tags": "Selecting the wines",
+"cond": "",
+"form": "Note",
+"place": "Pantry",
+"clue": "Note on the wine rack: \"Wines for tomorrow's banquet: selected and ready.\""
+},
+{
+"name": "Kitchen staff are off",
+"tags": "Teaching the kitchen staff",
+"cond": "",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"The kitchen staff have the evening off. Not one of them will be in the castle tonight.\""
+},
+{
+"name": "No bread to spare",
+"tags": "Bread for the poor",
+"cond": "",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"Every loaf of bread in this castle is set aside for tomorrow's banquet.\""
+},
+{
+"name": "Maps are away",
+"tags": "Restoring the old maps",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The old castle maps went to the capital this morning to be copied. They won't be back tonight.\""
+},
+{
+"name": "Nobody touches my shelves",
+"tags": "Counting the infirmary stores",
+"cond": "",
+"form": "Witness",
+"place": "Infirmary",
+"clue": "Doctor: \"Nobody counts my bottles tonight. I locked the stores this morning and I'm keeping the key.\""
+},
+{
+"name": "Armour doesn't fit",
+"tags": "Polishing the King's armour",
+"cond": "",
+"form": "Witness",
+"place": "Guards room",
+"clue": "Head Guard: \"The King's old armour went to the village armourer this morning, for repairs.\""
+},
+{
+"name": "The guest is ill",
+"tags": "Supper with the ambassador's wife",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The ambassador's wife fell ill this morning. She's staying in bed at the inn.\""
+},
+{
+"name": "Treasurer already gone",
+"tags": "Escorting the treasurer",
+"cond": "",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"The treasurer left for the village at dawn. He took his own guards.\""
+},
+{
+"name": "No maids coming",
+"tags": "Interviewing new maids",
+"cond": "",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"The new maids all took positions in the capital. Not one of them is coming to the castle.\""
+},
+{
+"name": "Dressmaker delayed",
+"tags": "Trying on gowns",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The dressmaker's cart lost a wheel. She won't be here before tomorrow.\""
+},
+{
+"name": "Tasting postponed",
+"tags": "Tasting the banquet",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The banquet tasting is off tonight. The King has a toothache.\""
+},
+{
+"name": "The lords are hunting",
+"tags": "Cards with the lords",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Princess: \"The lords all left for the hunt this morning. Nobody's playing cards tonight.\""
+},
+{
+"name": "Market closed",
+"tags": "Buying ingredients",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The village market is closed today for the saint's day.\""
+},
+{
+"name": "Weaponry closed",
+"tags": "Fencing Lessons",
+"cond": "Nobody else has an alibi in the Weaponry",
+"form": "Witness",
+"place": "Guards room",
+"clue": "Head Guard: \"The weaponry room is being cleaned tonight. Nobody trains in there until tomorrow.\""
+},
+{
+"name": "All hands needed",
+"tags": "Evening off",
+"cond": "Nobody else has the alibi Evening off",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"No staff have the evening off tonight. Every pair of hands is needed.\""
+},
+{
+"name": "Account books away",
+"tags": "Royal accounts",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The royal account books went to the treasurer in the village this morning.\""
+},
+{
+"name": "Guests cancelled",
+"tags": "Preparing the guest rooms",
+"cond": "",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"Tomorrow's guests have cancelled. I was told this morning to cook for nobody extra.\""
+},
+{
+"name": "Empty infirmary",
+"tags": "Sick",
+"cond": "Nobody else has the alibi Sick; Doctor is not the Suspect",
+"form": "Witness",
+"place": "Infirmary",
+"clue": "Doctor: \"Not a single patient in my infirmary today. Dreadfully dull.\""
+},
+{
+"name": "The toad is gone",
+"tags": "The remarkable toad",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The Doctor lost his remarkable toad this morning. It hopped straight into the well, and nobody is going down there for a toad.\""
+},
+{
+"name": "Contest cancelled",
+"tags": "Judging the cooking contest",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The village cooking contest was called off today. Half the cooks are ill.\""
+},
+{
+"name": "The lords have left",
+"tags": "Report to the council",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The lords of the council left for the capital this morning.\""
+},
+{
+"name": "Not tonight",
+"tags": "Listening to the townsfolk",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The village hall is locked tonight. The mayor shut it after a brawl this morning.\""
+},
+{
+"name": "School closed",
+"tags": "A talk at the village school",
+"cond": "",
+"form": "Witness",
+"place": "Infirmary",
+"clue": "Doctor: \"The village school is closed today. Half the children have the pox.\""
+},
+{
+"name": "Colleague not coming",
+"tags": "A colleague from the capital",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The physician from the capital sent word this morning. He isn't coming today.\""
+},
+{
+"name": "Budget already settled",
+"tags": "The household budget",
+"cond": "",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"The household budget was settled this morning. I've already been told to cook cheaper tonight.\""
+},
+{
+"name": "No voice",
+"tags": "Singing lesson",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The singing master has lost his voice. He sent word he won't come today.\""
+},
+{
+"name": "Turned back",
+"tags": "The old general",
+"cond": "",
+"form": "Witness",
+"place": "Guards room",
+"clue": "Head Guard: \"The general's party was turned back at the border this morning. They won't reach the castle tonight.\""
+},
+{
+"name": "Not today",
+"tags": "Inspecting the armoury",
+"cond": "",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"There's no armoury inspection today. It isn't in my book.\""
+},
+{
+"name": "No baby yet",
+"tags": "Visiting family",
+"cond": "Head of household is not the Suspect",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"(Suspect)'s sister came to sell eggs at the castle this morning. She's expecting a baby, but she's nowhere near due.\""
+},
+{
+"name": "No ink left",
+"tags": "Letters in the study",
+"cond": "Head of household is not the Suspect; nobody else has an alibi in the Study room",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"The ink in the study ran out this morning. Not a drop until the merchant comes tomorrow.\""
+},
+{
+"name": "Crossbows locked away",
+"tags": "Crossbow practice",
+"cond": "Weapons master is not the Suspect; not with the method Shot from the balustrade",
+"form": "Witness",
+"place": "Weaponry",
+"clue": "Weapons master: \"At five I'm taking every crossbow down for repairs. Nobody shoots tonight.\""
+},
+{
+"name": "Tavern shut",
+"tags": "The innkeeper's birthday",
+"cond": "Chef is not the Suspect",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"The village tavern is shut tonight. The innkeeper is ill in bed.\""
+},
+{
+"name": "No mass tonight",
+"tags": "Evening mass",
+"cond": "Head of household is not the Suspect",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"There's no mass in the village tonight. The priest left for the capital this morning.\""
+},
+{
+"name": "Injured horse",
+"tags": "Riding out",
+"cond": "Head Guard is not the Suspect",
+"form": "Witness",
+"place": "Guards room",
+"clue": "Head Guard: \"(Suspect)'s horse hurt its leg this morning. It's not leaving the stable today.\""
+}
+],
+"herrings": [
+{
+"name": "Poison",
+"chars": "Any but Suspicious or Explanatory characters",
+"susp": "'I saw (character) buying poison this morning'",
+"expl": "(Explainer): \"I asked (character) to buy rat poison. The cellar is full of rats.\"",
+"needs": "Hands"
+},
+{
+"name": "Dagger",
+"chars": "Any but Weapons master, Suspicious or Explanatory characters",
+"susp": "'I just saw (character) walking around with a dagger'",
+"expl": "(Explainer) saying the Weapons master gave (character) a dagger as a present today",
+"needs": "Hands"
+},
+{
+"name": "Burned letter",
+"chars": "Any but Suspect, Victim or Explainer",
+"susp": "Half-burned letter from (character) in a fireplace: \"...after tonight everything will change...\"",
+"expl": "(Explainer): \"(character) will confess a secret love tonight.\"",
+"needs": "Writing"
+},
+{
+"name": "Red stains",
+"chars": "Has bedroom, but not Suspect, Victim, Doctor or Explainer",
+"susp": "A cloth with red stains on (character)'s side of the bed",
+"expl": "Doctor or (Explainer): \"(character) had a nosebleed this morning.\"",
+"needs": "None"
+},
+{
+"name": "Sneaking around",
+"chars": "Any without Pantry-access, but not Suspect, Victim, Chef or Witness",
+"susp": "(Witness): \"(character) sneaked into the pantry when nobody was looking.\"",
+"expl": "Chef: \"(character) often steals a piece of cake. I pretend not to see it.\"",
+"needs": "Hands"
+},
+{
+"name": "Strange potion",
+"chars": "Any but Doctor, Suspect, Victim or Witness",
+"susp": "(Witness): \"I saw (character) hiding a glowing green vial.\"",
+"expl": "Doctor: \"I made (character) a hair tonic. It glows green, but it's harmless. They asked me not to tell anyone.\"",
+"needs": "Hands"
+},
+{
+"name": "Lab notes",
+"chars": "Doctor only",
+"susp": "Note in the infirmary: \"...the subject must not survive the night...\"",
+"expl": "(Explainer): \"The doctor calls his lab rats 'subjects' in his notes. Disgusting, but harmless.\"",
+"needs": "Writing"
+},
+{
+"name": "Hidden letter",
+"chars": "Writes, but not Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was writing a letter and hid it when I came in.\"",
+"expl": "(Explainer): \"(character) is writing a love poem for someone in the castle. They're too shy to send it.\"",
+"needs": "Writing, Sight"
+},
+{
+"name": "Ink stains",
+"chars": "Writes, but not Librarian, Suspect, Victim or Witness",
+"susp": "(Witness): \"(character) has ink all over their fingers.\"",
+"expl": "Librarian: \"(character) is copying a book for me. Ink everywhere, every day.\"",
+"needs": "Writing, Sight"
+},
+{
+"name": "Their own secret meeting",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) whispered that they'll meet someone in secret tonight.\"",
+"expl": "(Explainer): \"(character) plays cards with the guards in secret tonight. Gambling is forbidden in the castle.\"",
+"needs": "Hands, Sight"
+},
+{
+"name": "Borrowed keys",
+"chars": "Any but Head of household, Suspect, Victim or Witness",
+"susp": "(Witness): \"I saw (character) with the Head of household's key ring.\"",
+"expl": "Head of household: \"I lent (character) my keys to fetch extra candles.\"",
+"needs": "Hands"
+},
+{
+"name": "Staring at the chandelier",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was up at the parlor balustrade this afternoon, staring at the chandelier.\"",
+"expl": "(Explainer): \"(character) is tasked with replacing all the candles on the chandeliers before next week.\"",
+"needs": "Sight, Afternoon, Hands"
+},
+{
+"name": "Coil of rope",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"I saw (character) carrying a coil of rope.\"",
+"expl": "(Explainer): \"(character) is hanging new banners in the hall this week. They need plenty of rope for it.\"",
+"needs": "Hands, Lifting"
+},
+{
+"name": "Afraid of the chandelier",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) won't sit in the parlor. Keeps looking up at the chandelier.\"",
+"expl": "(Explainer): \"(character) has hated the parlor chandelier ever since it dropped a candle on their head as a child.\"",
+"needs": "Sight"
+},
+{
+"name": "Secret passages",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was studying a map of the castle with all the secret passages marked.\"",
+"expl": "(Explainer): \"(character) is secretly planning a treasure hunt for the children of the staff.\"",
+"needs": "Sight"
+},
+{
+"name": "Heavy purse",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) is carrying a heavy purse of gold around.\"",
+"expl": "(Explainer): \"(character) is tasked with paying the musicians for the ball we had last week.\"",
+"needs": "Hands"
+},
+{
+"name": "Sword practice",
+"chars": "Any but Weapons master, Suspect, Victim or Witness",
+"susp": "(Witness): \"(character) was practising sword strokes alone in the guards room.\"",
+"expl": "Weapons master: \"(character) has been taking sword lessons from me. Wants to impress someone at the ball.\"",
+"needs": "Hands"
+},
+{
+"name": "The royal will",
+"chars": "Writes, but not Head of household, Suspect, Victim or Witness",
+"susp": "(Witness): \"(character) asked me who inherits what when the King dies.\"",
+"expl": "Head of household: \"(character) is writing a history of the royal family. Every detail matters to them.\"",
+"needs": "Writing, Sight"
+},
+{
+"name": "New lock",
+"chars": "Has bedroom, but not Princess, Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) had a new lock put on their door today.\"",
+"expl": "(Explainer): \"(character) keeps a diary. Ever since the Princess read one aloud at dinner, they lock everything.\"",
+"needs": "Writing"
+},
+{
+"name": "\"You will pay for this!\"",
+"chars": "Any but King, Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"I heard (character) shout: 'You will pay for this!'\"",
+"expl": "(Explainer): \"(character) loses at chess to the King every week, and always shouts about it.\"",
+"needs": "Sight, Hands"
+},
+{
+"name": "The huge book",
+"chars": "Reads, but not Librarian, Suspect, Victim or Witness",
+"susp": "(Witness): \"(character) was carrying a huge book around all morning.\"",
+"expl": "Librarian: \"(character) borrowed the big atlas. They're planning a journey abroad.\"",
+"needs": "Hands, Lifting"
+},
+{
+"name": "The quietest hour",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) asked me when the library is at its quietest.\"",
+"expl": "(Explainer): \"(character) is secretly practising a speech for the ball and doesn't want anyone to hear it.\"",
+"needs": "None"
+},
+{
+"name": "Row with the Librarian",
+"chars": "Any but Librarian, Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) and the Librarian had a shouting match this morning.\"",
+"expl": "(Explainer): \"(character) has kept a library book for three years. The Librarian is furious about it.\"",
+"needs": "None"
+},
+{
+"name": "Head wounds",
+"chars": "Reads, but not Doctor, Suspect, Victim or Witness",
+"susp": "(Witness): \"(character) was reading a medical book about head wounds.\"",
+"expl": "Doctor: \"(character) is helping me in the infirmary this month. I've given them all my books on wounds to study.\"",
+"needs": "Sight, Hands"
+},
+{
+"name": "Torn pages",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was tearing pages out of a library book.\"",
+"expl": "(Explainer): \"(character) is making a book of old drawings as a gift for the King's birthday.\"",
+"needs": "Hands"
+},
+{
+"name": "Target practice",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was shooting at targets in the guards room this morning.\"",
+"expl": "(Explainer): \"(character) is entering the archery contest at the next summer fair. They practise every day.\"",
+"needs": "Hands, Sight"
+},
+{
+"name": "Looking down at the throne",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was up at the throne room balustrade, staring down at the throne.\"",
+"expl": "(Explainer): \"(character) is planning the garlands for the ball. They want them hanging from the throne room balustrade.\"",
+"needs": "Sight"
+},
+{
+"name": "Who's coming?",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) asked me who's coming to the rehearsal tonight.\"",
+"expl": "(Explainer): \"(character) is in charge of the seating at the ball. They need to know who'll be there.\"",
+"needs": "None"
+},
+{
+"name": "Something long",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was carrying something long, wrapped in cloth, through the hall.\"",
+"expl": "(Explainer): \"(character) bought a new lute for the musicians of the ball.\"",
+"needs": "Hands"
+},
+{
+"name": "Stranger at the gate",
+"chars": "Any but Queen, Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was whispering with a stranger at the castle gate this morning.\"",
+"expl": "(Explainer): \"(character) is secretly buying a birthday present for the Queen. The stranger is a jeweller.\"",
+"needs": "None"
+},
+{
+"name": "Tears in the hallway",
+"chars": "Any but Royalty, Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was crying in the hallway this morning.\"",
+"expl": "(Explainer): \"(character) had bad news from home today. Their old dog died.\"",
+"needs": "None"
+},
+{
+"name": "The dungeon keys",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) asked me where the old dungeon keys are kept.\"",
+"expl": "(Explainer): \"(character) dared the young guards to spend a night in the dungeon. They want to scare them properly.\"",
+"needs": "None"
+},
+{
+"name": "Sudden gold",
+"chars": "Any but Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) paid off all their debts this morning, in gold.\"",
+"expl": "(Explainer): \"(character) won a bet on the horse races in the village yesterday.\"",
+"needs": "None"
+},
+{
+"name": "Pale from the infirmary",
+"chars": "Any but Doctor, Suspect, Victim or Witness",
+"susp": "(Witness): \"(character) came out of the infirmary white as a sheet.\"",
+"expl": "Doctor: \"(character) came to have a tooth pulled today. Not suspicious, just painful.\"",
+"needs": "None"
+},
+{
+"name": "The sharpest knife",
+"chars": "Any but Chef, Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) borrowed my sharpest knife this morning.\"",
+"expl": "(Explainer): \"(character) is carving a wooden horse for the stable boy's birthday.\"",
+"needs": "Hands"
+},
+{
+"name": "Burning papers",
+"chars": "Writes, but not Ruler, Suspect, Victim, Witness or Explainer",
+"susp": "(Witness): \"(character) was burning papers in the fireplace this morning.\"",
+"expl": "(Explainer): \"(character) wrote a love poem and was too ashamed to keep it.\"",
+"needs": "Writing"
+},
+{
+"name": "The strongest bottle",
+"chars": "Any but Doctor, Suspect, Victim or Witness",
+"susp": "(Witness): \"(character) asked the Doctor which of his bottles is the strongest.\"",
+"expl": "Doctor: \"(character) can't sleep at night. I gave them a sleeping draught.\"",
+"needs": "None"
+}
+]
+};
+// ================= ENGINE (reads DATA from Generation Tables.xlsx) =================
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const hr=s=>{const m=String(s).match(/(\d+):(\d+)/);return m?(+m[1])+(+m[2])/60:NaN;};
+const TAGCOLS=Object.keys(DATA.characters[0]).filter(k=>/^Tag/.test(k));
+const SEXCOL=TAGCOLS.find(k=>/sex/i.test(k));
+const CH=DATA.characters.filter(c=>c['Tag 1 (group)']!=='Player').map(c=>({name:c.Character,tags:TAGCOLS.map(k=>c[k]).filter(Boolean),role:c['Tag 2 (role)'],sex:SEXCOL?c[SEXCOL]:''}));
+const NAMES=CH.map(c=>c.name);
+const norm=s=>String(s).trim().toLowerCase().replace(/weapon-master/g,'weapons master');
+const byName=n=>CH.find(c=>norm(c.name)===norm(String(n).replace(/^the\s+/i,'')));
+const ALLTAGS=new Set(CH.flatMap(c=>c.tags).concat(['Any']));
+const is=(c,t)=>{t=String(t).trim();return t==='Any'||c.tags.includes(t)||norm(c.name)===norm(t.replace(/^the\s+/i,''));};
+const known=t=>{t=String(t).trim();return ALLTAGS.has(t)||!!byName(t);};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const nameList=s=>String(s).split(/\s*,\s*|\s+or\s+|\s+and\s+/i).map(byName).filter(Boolean).map(c=>c.name);
+// Tag expressions: "Any", "Writes", "Chef", "A OR B", "A AND B", "X, but not Y, Z", "Any but Y", "X without Y", "Doctor only"
+function tagExpr(expr){expr=String(expr||'Any').trim().replace(/\s+only$/i,'');
+  let m=expr.match(/^(.*?),?\s+but(?:\s+not)?\s+(.+)$/i);
+  if(m){const head=tagExpr(m[1]);const ex=m[2].split(/\s*,\s*|\s+or\s+/i).map(s=>s.trim().replace(/^the\s+/i,'')).filter(known);return c=>head(c)&&!ex.some(t=>is(c,t));}
+  m=expr.match(/^(.+?)\s+without\s+([\w -]+)$/i);if(m){const h=tagExpr(m[1]);return c=>h(c)&&!is(c,m[2]);}
+  if(/\s+OR\s+/.test(expr)){const ps=expr.split(/\s+OR\s+/).map(tagExpr);return c=>ps.some(p=>p(c));}
+  if(/\s+AND\s+/.test(expr)){const ps=expr.split(/\s+AND\s+/).map(tagExpr);return c=>ps.every(p=>p(c));}
+  return c=>is(c,expr);}
+const segs=s=>String(s||'').split(/\s*;\s*/).filter(Boolean);
+const parseNeeds=s=>String(s||'').split(/\s*,\s*/).map(x=>x.trim()).filter(x=>x&&!/^none$/i.test(x));
+// ---- methods ----
+const METHODS=DATA.methods.map(m=>{const pr=m.Place.match(/^(.+?)\s+(\d+)\s*[–-]\s*(\d+)\s*\(random\)$/i);
+  const sp=tagExpr(m['Suspect tags']),vp=tagExpr(m['Victim tags']);
+  return {name:m.Method,time:hr(m.Time),timeTxt:m.Time,placeSpec:m.Place,places:pr?Array.from({length:+pr[3]-+pr[2]+1},(_,i)=>pr[1]+' '+(+pr[2]+i)):[m.Place],sTags:m['Suspect tags'],vTags:m['Victim tags'],dC:CH.filter(sp),sC:CH.filter(vp)};});
+// hand-coded effects for Fixed-text clues that rule people out without a placeholder
+const FIXED={'Poisoned wine|C3':{type:'list',rol:'d'},'Poisoned wine|D3':{type:'exclude',rol:'s',names:['Princess']},'Poisoned wine|D4':{type:'info'},
+ 'Lured to a secret meeting|C8':{type:'exclude',rol:'d',names:['Head Guard']},'Lured to a secret meeting|C9':{type:'exclude',rol:'d',names:['Weapons master']},
+ 'Lured to a secret meeting|D3':{type:'exclude',rol:'s',names:['Weapons master']},'Struck with a heavy book|D3':{type:'exclude',rol:'s',names:['Weapons master']}};
+function restrictPred(t){t=t.trim();let m=t.match(/^can't be (.+)$/i);if(m){const ns=nameList(m[1]);return c=>!ns.includes(c.name);}
+  m=t.match(/^can only be someone (with|without) (?:the tag )?(.+?)(?:, but not (.+))?$/i);
+  if(m){const tag=m[2].trim(),neg=/without/i.test(m[1]),bn=m[3]?nameList(m[3]):[];return c=>(neg?!is(c,tag):is(c,tag))&&!bn.includes(c.name);}
+  m=t.match(/^can only be (.+)$/i);if(m){const ns=nameList(m[1]);return c=>ns.includes(c.name);}return null;}
+const GROUPS=DATA.groups.map(g=>({g:g.Group,purpose:g.Purpose,chance:parseFloat(g['Show chance'])/100}));
+const MCLUES=DATA.methodClues.map(m=>{const key=m.Method+'|'+m.ID;let eff;const fx=m['Fixed text']||'';
+  if(FIXED[key])eff=FIXED[key];
+  else if(/\(partial list\)/.test(m.Clue))eff={type:'partial',rol:m.Group==='C'?'d':'s'};
+  else if(/\(excluded\)/.test(m.Clue))eff={type:'excluded',rol:m.Group==='D'?'s':'d'};
+  else if(/\(list\)/.test(m.Clue))eff={type:'list',rol:m.Group==='D'?'s':'d'};
+  else eff={type:'info'};
+  const cm=fx.match(/\((.+?) is not the (Suspect or Victim|Suspect|Victim)\)/i);
+  const notWho=cm?{who:byName(cm[1]),d:/Suspect/.test(cm[2]),s:/Victim/.test(cm[2])}:null;
+  const rm=fx.match(/\(\(excluded\) (.+)\)\s*$/i);const restrict=rm?restrictPred(rm[1]):null;
+  const afterA1=/after the player picked up A1/i.test(fx);
+  return {...m,eff,notWho,restrict,blocks:parseNeeds(m.Blocks),afterA1};});
+// ---- motives ----
+const MOT=DATA.motives.map((m,i)=>{const cond=m.Condition||'';const sn=cond.match(/\bSuspect is not the ([^;]+)/i),vn=cond.match(/\bVictim is not the ([^;]+)/i);
+  return {id:'MO'+i,name:m.Motive,s:m['Suspect tags'],v:m['Victim tags'],sp:tagExpr(m['Suspect tags']),vp:tagExpr(m['Victim tags']),clue:m.Clues,cond,
+    sameRole:/same role tag/i.test(cond),diffSex:/different sex/i.test(cond),notS:sn?byName(sn[1]):null,notV:vn?byName(vn[1]):null};});
+const motiveFits=(m,d,s)=>m.sp(d)&&m.vp(s)&&(!m.sameRole||(d.role&&d.role===s.role))&&(!m.diffSex||(d.sex&&s.sex&&d.sex!==s.sex))&&m.notS!==d&&m.notV!==s;
+// ---- alibis ----
+const splitNames=s=>s.split(/\s*(?:&|,|\bor\b)\s*/).map(x=>x.trim()).filter(Boolean);
+const AL=DATA.alibis.map((a,i)=>{const cond=a.Condition||'';const who=a.Characters;const toks=splitNames(who);
+  let partner=null,ppool=null,pkey=null,list2=[],elig,notMethod=null,needsSick=false,varTag=null;
+  for(const sg of segs(cond)){let m;
+    if(m=sg.match(/^(.+?) is busy too$/i)){const x=m[1].trim();
+      if(/^partner$/i.test(x)){const p=tagExpr(toks[1]||'Any');ppool=c=>p(c);pkey='partner';}
+      else if(byName(x))partner=byName(x);else if(ALLTAGS.has(x)){ppool=c=>c.tags.includes(x);pkey=x.toLowerCase();}}
+    else if(/alibi Sick/i.test(sg))needsSick=true;
+    else if(m=sg.match(/not with the method (.+)$/i))notMethod=m[1].trim();
+    else if(m=sg.match(/bedroom door only if the character has the tag (.+)$/i))varTag=m[1].trim();}
+  if(toks.every(t=>byName(t))){list2=toks.map(byName);elig=list2.filter(c=>c!==partner);}
+  else if(pkey==='partner')elig=CH.filter(tagExpr(toks[0]));
+  else elig=CH.filter(c=>toks.some(t=>is(c,t)));
+  return {id:'AL'+i,name:a['Activity / Alibi'],who,elig,list2,from:hr(a.From),to:hr(a.To),fromTxt:a.From,toTxt:a.To,tag:a['Alibi tag'],place:a['Alibi place'],
+    variants:a.Clues.split(/\s+OR\s+|\s+AND\/OR\s+/),cond,partner,ppool,pkey,needsSick,notMethod,varTag,needs:parseNeeds(a.Needs)};});
+const PARTNERLIST=(()=>{const c=DATA.contraGeneral.find(x=>/second character/i.test(x.cond||''));return c?((c.cond.match(/\(([^)]*)\)/)||[])[1]||'').split(/\s*,\s*/):[];})();
+AL.forEach(a=>{a.joint=!a.partner&&!a.ppool&&a.list2.length===2&&PARTNERLIST.includes(a.name);});
+const covers=(a,M,place)=>a.from<=M.time&&M.time<a.to&&a.place!==place&&a.notMethod!==M.name;
+// ---- contradictions ----
+const CG=DATA.contraGeneral.map((c,i)=>({id:'CG'+i,...c,specific:false})),CS=DATA.contraSpecific.map((c,i)=>({id:'CS'+i,...c,specific:true}));
+const PLACEPOOL=[...new Set(AL.map(a=>a.place).concat(DATA.methodClues.map(m=>m.Place)))].filter(p=>p&&!/door|\(/i.test(p));
+// ---- red herrings ----
+const RH=DATA.herrings.map((h,i)=>({id:'RH'+i,name:h.name,chars:h.chars,pred:tagExpr(h.chars),only:/\sonly$/i.test(h.chars),susp:h.susp,expl:h.expl,needs:parseNeeds(h.needs)}));
+
+// ================= TEXT =================
+function fill(t,v){return t.replace(/\(([^)]+)\)/g,(m,k,off,str)=>{const key=k.toLowerCase();if(!(key in v))return m;let val=v[key];
+  const before=str.slice(0,off);
+  if(val&&NAMES.includes(val)){if(str.charAt(off+m.length)===':')return val;
+    const start=/^\s*$/.test(before)||/[.!?"'“]\s*$/.test(before)||/:\s*$/.test(before);return (start?'The ':'the ')+val;}
+  if(v.__places&&v.__places.includes(key)&&val){val=String(val).toLowerCase(); if(/\bthe\s*$/i.test(before))return val; const start=/^\s*$/.test(before)||/[.!?"'“]\s*$/.test(before);return (start?'The ':'the ')+val;}
+  return val;});}
+const bare=(t,n)=>t.replace(/(^|[^(\w])([Cc])haracter\b(?!\))/g,(m,p,c,off)=>p+(off===0&&p===''?'The ':'the ')+n);
+function lst(names,speaker,text){let ns=[...names];let me=false;
+  if(speaker&&ns.includes(speaker)){ns=ns.filter(n=>n!==speaker);if(!/myself|\band I\b/i.test(text))me=true;}
+  const out=ns.map(n=>'the '+n);if(me)out.push('me');return out.length<2?out.join(''):out.slice(0,-1).join(', ')+' and '+out[out.length-1];}
+function speakerOf(t,holder){let s=t.replace(/^The /,'');
+  const two=s.match(/^(.+?) or (.+?) saying/);if(two&&holder&&[two[1],two[2]].map(norm).includes(norm(holder)))return holder;
+  const m=s.match(/^([A-Z][A-Za-z ]+?)(?::|\s+says\b|\s+saying\b)/);if(m&&byName(m[1]))return byName(m[1]).name;return null;}
+
+// ================= SOLVER =================
+function solve(L,on){const act=c=>!on||on.has(c.id);const D=new Set(NAMES),S=new Set(NAMES),ref=new Set(),pairs=[];
+  for(const c of L.clues)if(act(c)&&c.eff.type==='refute')ref.add(c.eff.key);
+  for(const c of L.clues){if(!act(c))continue;const e=c.eff;
+    if(e.type==='alibi'&&!ref.has(e.key))for(const n of e.names){D.delete(n);S.delete(n);}
+    if(e.type==='list'||e.type==='partial'){const T=e.rol==='d'?D:S;for(const n of [...T])if(!e.names.includes(n))T.delete(n);}
+    if(e.type==='exclude'||e.type==='excluded'){const T=e.rol==='d'?D:S;for(const n of e.names)T.delete(n);}
+    if(e.type==='motive')pairs.push(e);}
+  const seen=new Set(),ok=[];for(const p of pairs){const k=p.d+'>'+p.s;if(D.has(p.d)&&S.has(p.s)&&p.d!==p.s&&!seen.has(k)){seen.add(k);ok.push(p);}}
+  return {D,S,pairs:ok};}
+
+// ================= GENERATOR =================
+const MK=i=>'\u0001'+i+'\u0001';
+function attempt(r,forceMethod){
+  const pick=a=>a[Math.floor(r()*a.length)];const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+  const M=forceMethod||pick(METHODS);const place=pick(M.places);
+  const P=[];for(const d of M.dC)for(const s of M.sC){if(d===s)continue;const ms=MOT.filter(m=>motiveFits(m,d,s));if(ms.length)P.push({d,s,ms});}
+  if(!P.length)return null;
+  const {d,s,ms}=pick(P);const mot=pick(ms);const inn=CH.filter(c=>c!==d&&c!==s);
+  const blocked=new Map(NAMES.map(n=>[n,new Set()]));
+  const canNeed=(c,needs)=>!needs.some(x=>blocked.get(c.name).has(x))&&(!needs.includes('Lifting')||is(c,'Strong'));
+  const noWitness=()=>NAMES.filter(n=>blocked.get(n).has('Sight')||blocked.get(n).has('Afternoon'));
+  const slots=[];const slot=(excl,kind)=>{slots.push({excl:excl.filter(Boolean).map(c=>c.name||c),kind:kind||'w',name:null});return slots.length-1;};
+  const namesIn=t=>NAMES.filter(n=>new RegExp('\\b'+n+'\\b','i').test(t));
+  const clues=[];const add=c=>{clues.push(c);return c;};
+  // method clues first (they decide who is blocked)
+  let hasA1=false;
+  for(const g of GROUPS){if(r()>=g.chance)continue;
+    const exPool=(m,spk)=>{const base=m.eff.rol==='d'?M.dC:M.sC;return inn.filter(c=>(m.restrict?m.restrict(c):base.includes(c))&&c.name!==spk);};
+    const opts=MCLUES.filter(m=>m.Method===M.name&&m.Group===g.g).filter(m=>{
+      if(m.notWho&&m.notWho.who&&((m.notWho.d&&m.notWho.who===d)||(m.notWho.s&&m.notWho.who===s)))return false;
+      if(m.afterA1&&!hasA1)return false;
+      const spk=speakerOf(m.Clue);
+      if(m.eff.type==='partial'){const base=m.eff.rol==='d'?M.dC:M.sC;const others=base.filter(c=>c!==(m.eff.rol==='d'?d:s)&&c.name!==spk);if(others.length<2)return false;}
+      if(m.eff.type==='excluded'&&exPool(m,spk).length<1)return false;
+      return true;});
+    if(!opts.length)continue;const m=pick(opts);if(m.ID==='A1')hasA1=true;
+    const spk=speakerOf(m.Clue);let eff={...m.eff};const v={'place of murder':place,__places:['place of murder']};const base=eff.rol==='d'?M.dC:M.sC;
+    if(eff.type==='list'){eff.names=base.map(c=>c.name);v.list=lst(eff.names,spk,m.Clue);}
+    if(eff.type==='partial'){const truth=eff.rol==='d'?d:s;const others=shuf(base.filter(c=>c!==truth&&c.name!==spk));const n=Math.min(others.length,2+Math.floor(r()*3));
+      eff.names=shuf([truth,...others.slice(0,n)]).map(c=>c.name);v['partial list']=lst(eff.names,spk,m.Clue);}
+    if(eff.type==='excluded'){const pool=shuf(exPool(m,spk));const n=Math.min(pool.length,1+Math.floor(r()*2));eff.names=pool.slice(0,n).map(c=>c.name);v.excluded=lst(eff.names,null,'');
+      for(const nm of eff.names)for(const b of m.blocks)blocked.get(nm).add(b);}
+    add({cat:'Method',group:g.g,form:m.Form,place:m.Place==='(place of murder)'?place:m.Place,text:fill(m.Clue,v),srcName:'Method Clues · '+M.name+' · '+m.ID,eff,speaker:spk,blocks:eff.type==='excluded'&&m.blocks.length?m.blocks:null});}
+  // motives
+  const motiveClue=(m,x,y,herring)=>{let t=fill(m.clue,{suspect:x.name,victim:y.name,heir:x.name});let si=null;
+    if(/^Witness:/.test(t)){si=slot([x,y],'w');t=t.replace(/^Witness:/,MK(si)+':');}
+    return add({cat:'Motive',form:si!==null?'Witness':'',place:'',text:t,srcName:'Motives · '+m.name,eff:{type:'motive',d:x.name,s:y.name},herring,slot:si});};
+  motiveClue(mot,d,s,false);
+  const HP=[];for(const x of inn)for(const y of CH){if(y===x)continue;for(const m of MOT)if(motiveFits(m,x,y))HP.push({x,y,m});}
+  const used=new Set([d.name+'>'+s.name]);const usedM=new Set([mot.name]);const nH=1+Math.floor(r()*2);
+  for(let i=0;i<nH*3&&usedM.size<=nH&&HP.length;i++){const h=pick(HP);const key=h.x.name+'>'+h.y.name;if(used.has(key)||usedM.has(h.m.name))continue;used.add(key);usedM.add(h.m.name);motiveClue(h.m,h.x,h.y,true);}
+  // alibis
+  const busy=new Map();
+  const pkeyOf=a=>a.pkey||'__none';
+  const render=(vtxt,holder,extra)=>bare(fill(vtxt,Object.assign({character:holder.name},extra||{})),holder.name);
+  const vSpeaker=(vtxt,holder,ex)=>speakerOf(render(vtxt,holder,ex),holder.name);
+  const exOf=(a,p)=>p?{[pkeyOf(a)]:p.name}:{};
+  const fixedPartner=(a,holder)=>a.partner||(a.joint?a.list2.find(x=>x!==holder):null);
+  const poolPartners=(a,holder,fake)=>CH.filter(x=>a.ppool(x)&&x!==holder&&x!==d&&canNeed(x,a.needs)&&(fake||(x!==s&&(!busy.has(x.name)||busy.get(x.name).partnerOf===a.id))));
+  const variantOK=(vtxt,holder,a,fake,p)=>{const sp=vSpeaker(vtxt,holder,exOf(a,p));
+    if(a.varTag&&/bedroom door/i.test(vtxt)&&!is(holder,a.varTag))return false;
+    if(fake&&p&&sp===p.name)return false;
+    if(sp===holder.name&&/\(character\)|\bcharacter\b/i.test(vtxt)&&!/^\(?character\)?(:| saying)/i.test(vtxt))return false;return true;};
+  const fakeP=new Map();for(const a of AL)if(a.ppool){const c=poolPartners(a,d,true);fakeP.set(a.id,c.length?pick(c):null);}
+  const fpOf=a=>a.ppool?fakeP.get(a.id):fixedPartner(a,d);
+  const fakeOpts=AL.filter(a=>covers(a,M,place)&&a.elig.includes(d)&&!a.needsSick&&!(a.ppool&&!fpOf(a))&&(!fpOf(a)||canNeed(fpOf(a),a.needs))&&a.variants.some(v=>variantOK(v,d,a,true,fpOf(a))));
+  if(!fakeOpts.length)return null;const fa=pick(fakeOpts);const fp=fpOf(fa);
+  {let vs=fa.variants.filter(v=>variantOK(v,d,fa,true,fp));const self=vs.filter(v=>vSpeaker(v,d,exOf(fa,fp))===d.name);if(self.length&&r()<0.7)vs=self;busy.set(d.name,{a:fa,fake:true,v:pick(vs),p:fp});}
+  const assign=(c,wantSelf)=>{if(busy.has(c.name)||c===s||c===d)return false;
+    const PP=new Map();
+    const opts=AL.filter(a=>covers(a,M,place)&&a.elig.includes(c)&&canNeed(c,a.needs)).filter(a=>{
+      if(a.needsSick&&![...busy.entries()].some(([n,b])=>b.a.name==='Sick'&&n!==c.name&&!b.fake))return false;
+      let p;if(a.ppool){const cs=poolPartners(a,c,false);if(!cs.length)return false;p=pick(cs);}
+      else{p=fixedPartner(a,c);if(p){if(p===d||p===s||!canNeed(p,a.needs))return false;const pb=busy.get(p.name);if(pb&&!(pb.partnerOf===a.id))return false;}}
+      PP.set(a.id,p||null);return a.variants.some(v=>variantOK(v,c,a,false,p||null));});
+    if(!opts.length)return false;
+    let pool=opts;if(wantSelf){const self=opts.filter(a=>a.variants.some(v=>variantOK(v,c,a,false,PP.get(a.id))&&vSpeaker(v,c,exOf(a,PP.get(a.id)))===c.name));if(self.length)pool=self;else return false;}
+    const a=pick(pool);const p0=PP.get(a.id);const ex0=exOf(a,p0);let vs=a.variants.filter(v=>variantOK(v,c,a,false,p0));if(wantSelf){const sv=vs.filter(v=>vSpeaker(v,c,ex0)===c.name);if(sv.length)vs=sv;}
+    const usedT=new Set([...busy.entries()].filter(([n,b])=>!b.partnerOf).map(([n,b])=>render(b.v,byName(n),exOf(b.a,b.p))));const fresh=vs.filter(v=>!usedT.has(render(v,c,ex0)));if(fresh.length)vs=fresh;
+    busy.set(c.name,{a,v:pick(vs),p:p0});if(p0&&!busy.has(p0.name))busy.set(p0.name,{a,partnerOf:a.id,mainOf:c.name});return true;};
+  for(const c of shuf(inn))if(r()<0.6)assign(c,false);
+  // contradiction
+  const real=()=>[...busy.entries()].filter(([n,b])=>!b.fake);
+  const condOK=(C)=>{for(const sg of segs(C.cond)){let m;
+      if(/All others Inside/i.test(sg)){if(real().some(([n,b])=>b.a.tag!=='Inside'))return false;}
+      else if(/nobody else has an alibi at that place/i.test(sg)){if(!fa.place||real().some(([n,b])=>b.a.place===fa.place))return false;}
+      else if(m=sg.match(/nobody else has an alibi in (?:the )?(.+)$/i)){if(real().some(([n,b])=>norm(b.a.place||'')===norm(m[1])))return false;}
+      else if(m=sg.match(/nobody else has an? (Outside|Inside) alibi/i)){if(real().some(([n,b])=>b.a.tag===m[1]))return false;}
+      else if(m=sg.match(/nobody else has the alibi (.+)$/i)){if(real().some(([n,b])=>norm(b.a.name)===norm(m[1])))return false;}
+      else if(m=sg.match(/Only if Suspect has the tag (.+)$/i)){if(!is(d,m[1]))return false;}
+      else if(/second character/i.test(sg)){if(!(PARTNERLIST.includes(fa.name)&&fp))return false;}
+      else if(m=sg.match(/not for the alibis (.+)$/i)){if(m[1].split(/\s*,\s*|\s+and\s+/).map(norm).includes(norm(fa.name)))return false;}
+      else if(m=sg.match(/not with the method (.+)$/i)){if(norm(m[1])===norm(M.name))return false;}
+      else if(m=sg.match(/^(.+?) is not the Suspect/i)){if(byName(m[1])===d)return false;}}
+    return true;};
+  const okC=[...CG,...CS].filter(c=>{
+    if(c.specific){if(c.tags!==fa.name)return false;}
+    else if(c.tags!=='Any'&&c.tags!==fa.tag)return false;
+    return condOK(c);});
+  if(!okC.length)return null;const C=pick(okC);
+  const partner=/second character/i.test(C.cond||'')?fp:null;
+  const other=pick(PLACEPOOL.filter(p=>p!==fa.place&&p!==place));
+  const cv={suspect:d.name,'place of murder':place,'place of alibi':fa.place||fa.name,'time of murder':M.timeTxt,'other place':other,partner:partner?partner.name:'',__places:['place of murder','place of alibi','other place']};
+  let ctext=fill(C.clue,cv),csi=null;
+  if(!speakerOf(ctext)&&C.form==='Witness'){csi=slot([d,...namesIn(ctext)],'w');ctext=MK(csi)+': '+ctext.replace(/^'(.*)'$/,'"$1"');}
+  // red herrings
+  const rhs=[];
+  const addHerring=()=>{for(const h of shuf(RH)){if(rhs.some(x=>x.h===h))continue;
+      let cands=CH.filter(c=>h.pred(c)&&canNeed(c,h.needs));
+      cands=cands.filter(c=>c!==d&&c!==s&&!rhs.some(x=>x.c===c));if(!cands.length)continue;const c=pick(cands);
+      let expl=h.expl;if(/^Doctor or \(Explainer\)/.test(expl))expl=expl.replace(/^Doctor or \(Explainer\)/,(byName('Doctor')!==c&&r()<0.5)?'Doctor':'(Explainer)');
+      const mentioned=[c,...namesIn(expl.replace(/\(.*?\)/g,'')),...namesIn(h.susp.replace(/\(.*?\)/g,''))];
+      let exSlot=null,wiSlot=null;const fixedExp=speakerOf(expl),fixedSus=speakerOf(h.susp);
+      if(!fixedExp&&/\(Explainer\)/.test(expl))exSlot=slot([...mentioned,fixedSus],'e');
+      if(!fixedSus&&(/\(Witness\)/.test(h.susp)||/^'/.test(h.susp)))wiSlot=slot([...mentioned,fixedExp],'w');
+      if(exSlot!==null&&wiSlot!==null){slots[exSlot].pair=wiSlot;slots[wiSlot].pair=exSlot;}
+      const v={character:c.name,explainer:exSlot!==null?MK(exSlot):'',witness:wiSlot!==null?MK(wiSlot):''};
+      let susp=fill(h.susp,v);if(/^'/.test(susp)&&wiSlot!==null)susp=MK(wiSlot)+': "'+susp.replace(/^'|'$/g,'')+'"';
+      rhs.push({c,h,susp,ex2:fill(expl,v)});return true;}return false;};
+  const nR=1+Math.floor(r()*2);for(let i=0;i<nR;i++)addHerring();
+  // build
+  const buildAlibis=()=>{const out=[];for(const [n,b] of busy){if(b.partnerOf)continue;const a=b.a;const holder=byName(n);
+      const extra={};if(a.needsSick){const sick=[...busy.entries()].find(([m,bb])=>bb.a.name==='Sick'&&m!==n&&!bb.fake);extra['sick character']=sick?sick[0]:'';}
+      const p=b.p!==undefined?b.p:fixedPartner(a,holder);if(p)extra[pkeyOf(a)]=p.name;const text=render(b.v,holder,extra);const names=[n];if(p&&!b.fake)names.push(p.name);
+      out.push({cat:'Alibi',form:'',place:a.place||(a.tag==='Outside'?'Outside the castle':''),text,srcName:'Alibis · '+a.name,eff:{type:'alibi',names,key:b.fake?'fake':n},fake:!!b.fake,who:n,speaker:speakerOf(text,n),time:a.fromTxt+'–'+a.toTxt,needs:a.needs});}
+    return out;};
+  const assemble=()=>{const L={clues:[...clues,...buildAlibis()]};
+    L.clues.push({cat:'Contradiction',form:C.form,place:C.place==='(place of murder)'?place:C.place==='(place of alibi)'?(fa.place||fa.name):C.place.replace('(Suspect)',d.name),text:ctext,srcName:(C.specific?'Contradictions · alibi specific · ':'Contradictions · ')+C.name,eff:{type:'refute',key:'fake'},slot:csi});
+    rhs.forEach(x=>{L.clues.push({cat:'Red herring',form:'',place:'',text:x.susp,srcName:'Red Herrings · '+x.h.name,eff:{type:'none'},rhNote:'Suspicion'});
+      L.clues.push({cat:'Red herring',form:'',place:'',text:x.ex2,srcName:'Red Herrings · '+x.h.name,eff:{type:'none'},rhNote:'Explanation'});});
+    L.clues.forEach((c,i)=>c.id='c'+i);return L;};
+  // uniqueness
+  for(let guard=0;;guard++){const res=solve(assemble());
+    if(res.pairs.length===1&&res.pairs[0].d===d.name&&res.pairs[0].s===s.name)break;
+    if(guard>12||!res.pairs.some(p=>p.d===d.name&&p.s===s.name))return null;
+    const bad=res.pairs.find(p=>!(p.d===d.name&&p.s===s.name));const tr=shuf([bad.d,bad.s].map(byName).filter(c=>c&&c!==d&&c!==s));
+    if(!tr.some(c=>assign(c,false)))return null;}
+  // every character speaks
+  const fixedSpeakers=()=>{const m=new Map(NAMES.map(n=>[n,0]));const L=assemble();for(const c of L.clues){const sp=speakerOf(c.text.replace(/\u0001\d+\u0001/g,'X'),c.who);if(sp)m.set(sp,m.get(sp)+1);}return m;};
+  const fillSlots=()=>{let cnt=fixedSpeakers();for(const sl of slots)sl.name=null;const nw=noWitness();
+    const order=shuf(slots.map((_,i)=>i));
+    for(const pass of [0,1])for(const i of order){const sl=slots[i];if(sl.name)continue;
+      const taken=sl.pair!==undefined&&slots[sl.pair].name?[slots[sl.pair].name]:[];
+      const pool=NAMES.filter(n=>!sl.excl.includes(n)&&!taken.includes(n)&&!(sl.kind==='w'&&nw.includes(n)));if(!pool.length)continue;
+      const silent=pool.filter(n=>cnt.get(n)===0);if(pass===0&&!silent.length)continue;
+      const min=Math.min(...pool.map(n=>cnt.get(n)));const nm=pick(silent.length?silent:pool.filter(n=>cnt.get(n)===min));sl.name=nm;cnt.set(nm,cnt.get(nm)+1);}
+    return cnt;};
+  let cnt=fillSlots();
+  for(let tries=0;tries<10;tries++){const silent=NAMES.filter(n=>cnt.get(n)===0);if(!silent.length)break;let changed=false;
+    for(const n of silent){const c=byName(n);if(assign(c,true)){changed=true;}}
+    if(!changed&&rhs.length<5)changed=addHerring();
+    if(!changed)break;cnt=fillSlots();}
+  if(slots.some(sl=>!sl.name))return null;
+  const L=assemble();const sub=t=>t.replace(/\u0001(\d+)\u0001/g,(m,i)=>slots[+i].name);
+  L.clues.forEach(c=>{c.text=sub(c.text).replace(/(:\s*"|^"|[.!?]\s+)the\b/g,(m,p)=>p+'The');c.text=c.text.charAt(0).toUpperCase()+c.text.slice(1);c.speaker=speakerOf(c.text,c.who);});
+  const fin=new Map(NAMES.map(n=>[n,0]));L.clues.forEach(c=>{if(c.speaker)fin.set(c.speaker,fin.get(c.speaker)+1);});
+  L.silent=NAMES.filter(n=>fin.get(n)===0);
+  L.blocked=[...blocked.entries()].filter(([n,b])=>b.size).map(([n,b])=>[n,[...b]]);
+  Object.assign(L,{d,s,mot,fa,C,M,place,rhs});return L;}
+function generate(seed,force){const r=mulberry32(seed);for(let p=1;p<=60;p++){const L=attempt(r,force);if(L){const res=solve(L);if(res.pairs.length===1&&res.pairs[0].d===L.d.name&&res.pairs[0].s===L.s.name){L.seed=seed;L.tries=p;return L;}}}return null;}
+
+// ================= UI =================
+const CATS=['Method','Motive','Alibi','Contradiction','Red herring'];
+const CATN={'Method':'Method clues','Motive':'Motives','Alibi':'Alibis','Contradiction':'Contradiction','Red herring':'Red herrings'};
+let L=null,on=new Set(),mode=-1,autoRule=false,playMode=true,order=[];
+function logic(c){const e=c.eff;
+  if(e.type==='list')return (e.rol==='d'?'Murderer can only be: ':'Victim can only be: ')+e.names.join(', ');
+  if(e.type==='partial')return (e.rol==='d'?'Murderer is one of: ':'Victim is one of: ')+e.names.join(', ');
+  if(e.type==='exclude'||e.type==='excluded')return (e.rol==='d'?'Not the murderer: ':'Not the victim: ')+e.names.join(', ')+(c.blocks?' · blocked today: '+c.blocks.join(', '):'');
+  if(e.type==='alibi')return (c.fake?'Fake alibi: seems to put ':'')+e.names.join(' and ')+(c.fake?' elsewhere':' '+(e.names.length>1?'are':'is')+' elsewhere at '+L.M.timeTxt+' → ruled out as murderer and victim');
+  if(e.type==='refute')return 'Breaks the alibi of the '+L.d.name;
+  if(e.type==='motive')return e.d+' has a motive against '+e.s+(c.herring?' (false lead)':'');
+  if(c.cat==='Red herring')return c.rhNote==='Suspicion'?'Looks suspicious, rules nobody out':'Explains the suspicion away';
+  if(c.cat==='Method')return c.group==='A'?'Group A: when and where':'Group B: which method (rules nobody out)';
+  return '';}
+function renderClues(){const el=document.getElementById('clues');
+  if(playMode)el.innerHTML='<div><h3>Clues</h3><div class="cat-list">'+order.map(i=>L.clues[i]).map(c=>'<label class="clue'+(on.has(c.id)?'':' off')+'" for="cb-'+c.id+'"><input type="checkbox" id="cb-'+c.id+'" data-id="'+c.id+'"'+(on.has(c.id)?' checked':'')+'><div class="clue-text">'+esc(c.text)+'</div></label>').join('')+'</div></div>';
+  else el.innerHTML=CATS.map(cat=>{const cs=L.clues.filter(c=>c.cat===cat);if(!cs.length)return '';
+    return '<div><h3>'+CATN[cat]+'</h3><div class="cat-list">'+cs.map(c=>{
+      const meta=[c.form,c.place,c.cat==='Alibi'?'about: '+c.who+(c.time?' · '+c.time:'')+(c.needs&&c.needs.length?' · needs '+c.needs.join(', '):''):''].filter(Boolean).map(esc).join(' · ');
+      return '<label class="clue'+(on.has(c.id)?'':' off')+'" for="cb-'+c.id+'"><input type="checkbox" id="cb-'+c.id+'" data-id="'+c.id+'"'+(on.has(c.id)?' checked':'')+'>'+
+      '<div><div class="meta">'+(meta?'<span>'+meta+'</span>':'')+'<span class="src">'+esc(c.srcName)+'</span>'+(c.fake?'<span class="tag-fake">fake alibi</span>':'')+'</div><div class="clue-text">'+esc(c.text)+'</div></div>'+
+      '<div class="logic'+(['info','none'].includes(c.eff.type)?' muted':'')+'">→ '+esc(logic(c))+'</div></label>';}).join('')+'</div></div>';}).join('');
+  el.querySelectorAll('input').forEach(i=>i.addEventListener('change',()=>{i.checked?on.add(i.dataset.id):on.delete(i.dataset.id);i.closest('.clue').classList.toggle('off',!i.checked);renderPanel();}));}
+function renderPanel(){const res=solve(L,on);
+  const chips=set=>NAMES.map(n=>'<span class="chip'+(!autoRule||set.has(n)?'':' out')+'">'+esc(n)+'</span>').join('');
+  let st;if(res.pairs.length===1){const p=res.pairs[0];st='<div class="status ok">Solved: the '+esc(p.d)+' plans to kill the '+esc(p.s)+'. Exactly one possibility is left.</div>';}
+  else if(res.pairs.length>1)st='<div class="status bad">'+res.pairs.length+' possibilities still open. The player is missing clues.</div>';
+  else st='<div class="status wait">No combination fits yet. The player is missing a motive, an alibi or the contradiction.</div>';
+  if(!autoRule)st='';
+  const bl=L.blocked.length?L.blocked.map(([n,b])=>n+' ('+b.join(', ')+')').join(', '):'nobody';
+  document.getElementById('panel').innerHTML='<div class="toolbar"><button id="btn-auto" aria-pressed="'+autoRule+'">Auto rule-out: '+(autoRule?'On':'Off')+'</button><button id="btn-play" aria-pressed="'+playMode+'">Player view: '+(playMode?'On':'Off')+'</button></div><div><div class="lbl">Possible murderer</div><div class="chips">'+chips(res.D)+'</div></div><div><div class="lbl">Possible victim</div><div class="chips">'+chips(res.S)+'</div></div>'+st+
+   '<details id="plan"><summary>Show the hidden plan</summary><dl class="sol"><dt>Murderer</dt><dd>'+esc(L.d.name)+'</dd><dt>Victim</dt><dd>'+esc(L.s.name)+'</dd><dt>Method</dt><dd>'+esc(L.M.name)+'</dd><dt>When</dt><dd>'+esc(L.M.timeTxt+', '+L.place.toLowerCase())+'</dd><dt>Motive</dt><dd>'+esc(L.mot.name)+'</dd><dt>Fake alibi</dt><dd>'+esc(L.fa.name)+'</dd><dt>Contradiction</dt><dd>'+esc(L.C.name)+'</dd><dt>Blocked</dt><dd>'+esc(bl)+'</dd><dt>Attempts</dt><dd>'+L.tries+'</dd></dl></details>';
+  document.getElementById('plan').addEventListener('toggle',renderCast);document.getElementById('btn-auto').onclick=()=>{autoRule=!autoRule;renderPanel();};document.getElementById('btn-play').onclick=()=>{playMode=!playMode;renderClues();renderPanel();};}
+function renderCast(){const show=document.getElementById('plan')&&document.getElementById('plan').open;
+  document.getElementById('cast').innerHTML=NAMES.map(n=>{const mine=L.clues.filter(c=>c.speaker===n);const al=L.clues.find(c=>c.cat==='Alibi'&&c.eff.names.includes(n));
+    const role=show?(n===L.d.name?'<span class="role d">murderer</span>':n===L.s.name?'<span class="role s">victim</span>':''):'';
+    const tonight=al?'Tonight: '+al.srcName.replace('Alibis · ','')+(al.fake&&show?' (fake)':'')+(al.who!==n?' (with the '+al.who+')':''):'Tonight: no alibi';
+    return '<div class="person"><h4>'+esc(n)+role+'</h4><div class="tonight">'+esc(tonight)+'</div>'+(mine.length?'<ul>'+mine.map(c=>'<li>'+esc(c.text)+'</li>').join('')+'</ul>':'<div class="none">No line in this level</div>')+'</div>';}).join('');
+  const rooms={};L.clues.filter(c=>!c.speaker).forEach(c=>{const p=((c.cat==='Method'||c.cat==='Contradiction')&&c.place)?c.place:'No place given in Excel';(rooms[p]=rooms[p]||[]).push(c);});
+  document.getElementById('rooms').innerHTML=Object.keys(rooms).sort().map(p=>'<div class="person"><h4>'+esc(p)+'</h4><ul>'+rooms[p].map(c=>'<li>'+esc(c.text)+'</li>').join('')+'</ul></div>').join('');}
+function nieuw(seed){seed=seed||Math.floor(Math.random()*1e6)+1;L=generate(seed,mode>=0?METHODS[mode]:null);
+  if(!L){document.getElementById('seed').textContent='Seed '+seed+' gave no level. Try again.';return;}
+  on=new Set();order=L.clues.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}document.getElementById('seed').textContent='Level #'+seed+' · '+L.M.name+' · '+L.clues.length+' clues';renderClues();renderPanel();renderCast();}
+const seg=document.getElementById('mseg');
+seg.innerHTML='<button data-m="-1" aria-pressed="true">Random method</button>'+METHODS.map((M,i)=>'<button data-m="'+i+'" aria-pressed="false">'+esc(M.name)+'</button>').join('');
+seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{mode=+b.dataset.m;seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));nieuw();});
+document.getElementById('btn-gen').onclick=()=>nieuw();
+document.getElementById('btn-all').onclick=()=>{on=new Set(L.clues.map(c=>c.id));renderClues();renderPanel();};
+document.getElementById('btn-none').onclick=()=>{on=new Set();renderClues();renderPanel();};
+function rowsList(){const R=[];
+  for(const M of METHODS)R.push(['Method Clues · '+M.name,MCLUES.filter(m=>m.Method===M.name).map(m=>({key:'Method Clues · '+M.name+' · '+m.ID,label:m.ID+' · '+m.Clue,why:''}))]);
+  R.push(['Motives',MOT.map(m=>{const can=METHODS.some(M=>M.dC.some(d=>M.sC.some(s=>d!==s&&motiveFits(m,d,s))));const any=CH.some(d=>CH.some(s=>d!==s&&motiveFits(m,d,s)));
+    return {key:'Motives · '+m.name,label:m.name,why:!any?'No pair of characters fits these tags and condition':can?'':'Only as a false lead: no method lets these tags be murderer and victim'};})]);
+  R.push(['Alibis',AL.map(a=>{const cov=METHODS.some(M=>M.places.some(p=>covers(a,M,p)));return {key:'Alibis · '+a.name,label:a.name+' ('+a.fromTxt+'–'+a.toTxt+')',why:cov?'':'Does not cover any murder time ('+METHODS.map(M=>M.timeTxt).join(', ')+')'};})]);
+  R.push(['Contradictions',CG.map(c=>({key:'Contradictions · '+c.name,label:c.name,why:''})).concat(CS.map(c=>{const a=AL.find(x=>x.name===c.tags);const can=a&&METHODS.some(M=>a.elig.some(x=>M.dC.includes(x)));
+    return {key:'Contradictions · alibi specific · '+c.name,label:c.name+' (alibi specific: '+c.tags+')',why:!a?'No alibi with this exact name':can?'':'This alibi belongs to someone who cannot be the murderer with the current methods'};}))]);
+  R.push(['Red Herrings',RH.map(h=>({key:'Red Herrings · '+h.name,label:h.name,why:''}))]);return R;}
+function test(){const t0=performance.now();let ok=0,sil=0;const plots=new Set(),lv=new Set(),use={},byM={};const base=Math.floor(Math.random()*1e6);
+  for(let i=0;i<1000;i++){const x=generate(base+i,mode>=0?METHODS[mode]:null);if(!x)continue;ok++;if(x.silent.length)sil++;byM[x.M.name]=(byM[x.M.name]||0)+1;plots.add(x.M.name+x.d.name+x.s.name+x.mot.name);lv.add(x.clues.map(c=>c.text).sort().join('|'));
+    new Set(x.clues.map(c=>c.srcName)).forEach(k=>use[k]=(use[k]||0)+1);}
+  const ms=Math.round(performance.now()-t0);const stat=(n,t)=>'<div class="stat"><div class="n">'+n+'</div><div class="t">'+t+'</div></div>';
+  document.getElementById('stats').innerHTML=stat(ok+'/1000','levels approved by the solver')+stat(plots.size,'different plots (method, murderer, victim, motive)')+stat(lv.size,'unique sets of clues')+stat((ok-sil)+'/'+ok,'levels where every character speaks')+stat(ms+' ms','run time');
+  document.getElementById('cov').innerHTML=rowsList().map(([sheet,rows])=>'<tr class="sheet"><td colspan="4">'+esc(sheet)+'</td></tr>'+rows.map(r=>{const n=use[r.key]||0;
+    return '<tr><td>'+esc(r.label)+'</td><td class="num'+(n?'':' zero')+'">'+n+'</td><td><div class="bar" style="width:'+(n?Math.max(2,n/10):0)+'%;'+(n?'':'background:transparent')+'"></div></td><td>'+esc(n?r.why:(r.why||(mode>=0?'Not used with this method':'Not picked in this run')))+'</td></tr>';}).join('')).join('');
+  return {ok,sil,use};}
+document.getElementById('btn-test').onclick=test;
+const count=k=>DATA[k].length;
+document.getElementById('facts').innerHTML=[[CH.length,'characters'],[count('methods'),'methods'],[count('methodClues'),'method clues'],[count('motives'),'motives'],[count('alibis'),'alibis'],[count('contraGeneral')+count('contraSpecific'),'contradictions'],[count('herrings'),'red herrings']].map(([n,t])=>'<span class="fact"><b>'+n+'</b> '+t+'</span>').join('');
+if(!window.__NOAUTO){nieuw(2611);test();}
+
+</script>
+
+</body></html>
