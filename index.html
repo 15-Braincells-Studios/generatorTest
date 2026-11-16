@@ -3043,14 +3043,14 @@ const DATA={
 {
 "Motive": "Debts",
 "Suspect tags": "Any",
-"Victim tags": "Any",
+"Victim tags": "Royalty OR Head of household",
 "Clues": "Document: (Suspect) owes (Victim) 100 gold coins, to be paid before tomorrow",
 "Condition": ""
 },
 {
 "Motive": "Jealousy",
 "Suspect tags": "Any",
-"Victim tags": "Any",
+"Victim tags": "Any, but not Ruler",
 "Clues": "Witness: \"(Suspect) is madly in love, but their sweetheart only has eyes for (Victim). You should have seen (Suspect)'s face this morning.\"",
 "Condition": "Witness is not Suspect or Victim"
 },
@@ -3112,7 +3112,7 @@ const DATA={
 },
 {
 "Motive": "Silencing a witness",
-"Suspect tags": "Any",
+"Suspect tags": "Staff",
 "Victim tags": "Any",
 "Clues": "Witness: \"Ever since the silver went missing, (Victim) hasn't taken their eyes off (Suspect).\"",
 "Condition": "Witness is not Suspect or Victim"
@@ -3133,7 +3133,7 @@ const DATA={
 },
 {
 "Motive": "Rumours",
-"Suspect tags": "Any",
+"Suspect tags": "Staff",
 "Victim tags": "Any",
 "Clues": "Witness: \"(Victim) tells everyone that (Suspect) is a thief. Nobody trusts (Suspect) anymore.\"",
 "Condition": "Witness is not Suspect or Victim"
@@ -3266,14 +3266,14 @@ const DATA={
 },
 {
 "Motive": "The forbidden book",
-"Suspect tags": "Any",
+"Suspect tags": "Reads",
 "Victim tags": "Any",
 "Clues": "Witness: \"(Victim) caught (Suspect) reading a forbidden book of dark magic, and wants to tell the King.\"",
 "Condition": "Witness is not Suspect or Victim"
 },
 {
 "Motive": "Secret in the archives",
-"Suspect tags": "Any",
+"Suspect tags": "Any, but not Ruler",
 "Victim tags": "Any",
 "Clues": "Witness: \"(Victim) found something in the royal archives about (Suspect)'s real parents.\"",
 "Condition": "Witness is not Suspect or Victim"
@@ -3574,7 +3574,7 @@ const DATA={
 },
 {
 "Motive": "The family ring",
-"Suspect tags": "Any",
+"Suspect tags": "Staff",
 "Victim tags": "Any",
 "Clues": "Witness: \"(Victim) won (Suspect)'s family ring at dice this morning, and refuses to give it back.\"",
 "Condition": "Witness is not Suspect or Victim; Suspect and Victim are not both Royalty"
@@ -3659,7 +3659,7 @@ const DATA={
 {
 "Motive": "The marked cards",
 "Suspect tags": "Any",
-"Victim tags": "Any",
+"Victim tags": "Any, but not Ruler",
 "Clues": "Witness: \"(Suspect) found out this morning that (Victim) has been cheating them at cards with a marked deck. (Suspect) had lost a fortune to them.\"",
 "Condition": "Witness is not Suspect or Victim"
 },
@@ -3991,7 +3991,7 @@ const DATA={
 },
 {
 "Activity / Alibi": "Early to bed",
-"Characters": "Any",
+"Characters": "Has bedroom",
 "From": "17:00",
 "To": "24:00",
 "Alibi tag": "Inside",
@@ -4684,7 +4684,7 @@ const DATA={
 },
 {
 "Activity / Alibi": "A night of stories",
-"Characters": "Any",
+"Characters": "Staff",
 "From": "18:00",
 "To": "21:00",
 "Alibi tag": "Inside",
@@ -4739,7 +4739,7 @@ const DATA={
 },
 {
 "Activity / Alibi": "A herbal bath",
-"Characters": "Any, but not Doctor",
+"Characters": "Strong, but not Doctor",
 "From": "18:00",
 "To": "20:00",
 "Alibi tag": "Inside",
@@ -5827,6 +5827,38 @@ const DATA={
 "form": "Witness",
 "place": "Hallway",
 "clue": "Head of household: \"The court painter went home this morning with a cold. He left his brushes soaking in my good bucket.\""
+},
+{
+"name": "Storyteller moved on",
+"tags": "A night of stories",
+"cond": "Chef is not the Suspect; nobody else has the alibi A night of stories",
+"form": "Witness",
+"place": "Kitchen",
+"clue": "Chef: \"The storyteller who came this morning ate three bowls of my soup and left for the next village. He won't be back before spring.\""
+},
+{
+"name": "The priest has a fever",
+"tags": "Evening mass",
+"cond": "Head Guard is not the Suspect; nobody else has the alibi Evening mass",
+"form": "Witness",
+"place": "Entrance",
+"clue": "Head Guard: \"The village priest is in bed with a fever. There's no mass tonight. The bell-ringer told me at the gate this morning.\""
+},
+{
+"name": "No herbal bath",
+"tags": "A herbal bath",
+"cond": "Doctor is not the Suspect",
+"form": "Witness",
+"place": "Infirmary",
+"clue": "Doctor: \"(Suspect) asked me for a herbal bath this morning, and I said no. With that cough, hot water is the last thing they need.\""
+},
+{
+"name": "Floor is drying",
+"tags": "Carrying the banquet tables",
+"cond": "Head of household is not the Suspect; nobody else has an alibi in the Ballroom",
+"form": "Witness",
+"place": "Hallway",
+"clue": "Head of household: \"Nobody carries anything into the ballroom tonight. The floor was waxed this morning, and it needs until tomorrow to dry.\""
 }
 ],
 "herrings": [
@@ -6786,13 +6818,25 @@ function solve(L,on){const act=c=>!on||on.has(c.id);const D=new Set(NAMES),S=new
   return {D,S,pairs:ok};}
 
 // ================= GENERATOR =================
-const MK=i=>'\u0001'+i+'\u0001';
+const MK=i=>'\u0001'+i+'\u0001';const PAIRS=new Map();
+const W={g1:'chars',mw:1}; // G1: victim, then murderer, then method (weight 1/pairs), then motive (weight 1/fit); G2 on
+// G1/G2: weights. A motive that fits many (murderer, victim) pairs, or an alibi that many characters may have, gets a smaller chance.
+const MOTFIT=new Map(MOT.map(m=>[m,CH.reduce((n,d)=>n+CH.filter(s=>s!==d&&motiveFits(m,d,s)).length,0)]));
+const motW=m=>1/MOTFIT.get(m);const alW=a=>1/Math.max(1,a.elig.length);
 function attempt(r,forceMethod){
-  const pick=a=>a[Math.floor(r()*a.length)];const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
-  const M=forceMethod||pick(METHODS);
-  const P=[];for(const d of M.dC)for(const s of M.sC){if(d===s)continue;const ms=MOT.filter(m=>motiveFits(m,d,s));if(ms.length)P.push({d,s,ms});}
+  const pick=a=>a[Math.floor(r()*a.length)];const wpick=(a,w)=>{const ws=a.map(w);let t=ws.reduce((x,y)=>x+y,0)*r();for(let i=0;i<a.length;i++){t-=ws[i];if(t<=0)return a[i];}return a[a.length-1];};const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+  const pairsOf=M=>PAIRS.get(M)||PAIRS.set(M,pairsRaw(M)).get(M);const pairsRaw=M=>{const P=[];for(const d of M.dC)for(const s of M.sC){if(d===s)continue;const ms=MOT.filter(m=>motiveFits(m,d,s));if(ms.length)P.push({d,s,ms});}return P;};
+  let M=forceMethod,P;
+  if(!M&&W.g1==='chars'){const all=METHODS.map(x=>({x,P:pairsOf(x)}));const vs=[...new Set(all.flatMap(a=>a.P.map(p=>p.s)))];const sv=pick(vs);
+    const ds=[...new Set(all.flatMap(a=>a.P.filter(p=>p.s===sv).map(p=>p.d)))];const dv=pick(ds);const ok=all.filter(a=>a.P.some(p=>p.s===sv&&p.d===dv));const ch=W.mw?wpick(ok,a=>1/a.P.length):pick(ok);M=ch.x;P=ch.P.filter(p=>p.s===sv&&p.d===dv);}
+  else{M=M||pick(METHODS);P=pairsOf(M);}
   if(!P.length)return null;
-  const {d,s,ms}=pick(P);const mot=pick(ms);const inn=CH.filter(c=>c!==d&&c!==s);
+  let d,s,ms;
+  if(W.g1==='roles'||W.g1==='chars'){const vs=[...new Set(P.map(p=>p.s))];const sv=pick(vs);const Ps=P.filter(p=>p.s===sv);({d,s,ms}=pick(Ps));}
+  else if(W.g1==='rolesD'){const ds=[...new Set(P.map(p=>p.d))];const dv=pick(ds);const Pd=P.filter(p=>p.d===dv);({d,s,ms}=pick(Pd));}
+  else if(W.g1==='alt'){if(r()<0.5){const vs=[...new Set(P.map(p=>p.s))];const sv=pick(vs);({d,s,ms}=pick(P.filter(p=>p.s===sv)));}else{const ds=[...new Set(P.map(p=>p.d))];const dv=pick(ds);({d,s,ms}=pick(P.filter(p=>p.d===dv)));}}
+  else ({d,s,ms}=pick(P));
+  const mot=W.g1?wpick(ms,motW):pick(ms);const inn=CH.filter(c=>c!==d&&c!==s);
   // victim plan, time and place of murder
   const plans=PLANS.get(M.name)||[];let vplan=null,T=M.time,place=pick(M.places);
   const quarters=(a,b)=>{const o=[];for(let t=Math.ceil(a*4-1e-9)/4;t<=b+1e-9;t+=0.25)o.push(t);return o;};
@@ -6803,7 +6847,7 @@ function attempt(r,forceMethod){
     else if(M.kind==='sleep')place=(vplan.alibi&&norm(vplan.alibi.place||'')==='infirmary')?'Infirmary':s.name+"'s bedroom";}
   const TT=timeTxtOf(T),TW=timeWords(T);
   const planHolders=new Map();if(vplan)planHolders.set(s.name,vplan);
-  const noAlibi=new Set(),rhEvening=new Set();let C=null;
+  const noAlibi=new Set(),rhEvening=new Set();let C=null;const loose=[];
   const spouseOf=x=>is(x,'Ruler')?CH.find(c=>c!==x&&is(c,'Ruler')):null;
   const blocked=new Map(NAMES.map(n=>[n,new Set()]));
   const canNeed=(c,needs)=>!needs.some(x=>blocked.get(c.name).has(x))&&(!needs.includes('Lifting')||is(c,'Strong'));
@@ -6843,7 +6887,8 @@ function attempt(r,forceMethod){
   motiveClue(mot,d,s,false);
   const HP=[];for(const x of inn)for(const y of CH){if(y===x)continue;for(const m of MOT)if(motiveFits(m,x,y))HP.push({x,y,m});}
   const used=new Set([d.name+'>'+s.name]);const usedM=new Set([mot.name]);const nH=1+Math.floor(r()*2);
-  for(let i=0;i<nH*3&&usedM.size<=nH&&HP.length;i++){const h=pick(HP);const key=h.x.name+'>'+h.y.name;if(used.has(key)||usedM.has(h.m.name))continue;used.add(key);usedM.add(h.m.name);motiveClue(h.m,h.x,h.y,true);}
+  const hPick=()=>{if(!W.g1)return pick(HP);const xs=[...new Set(HP.map(h=>h.x))];const x=pick(xs);const ys=[...new Set(HP.filter(h=>h.x===x).map(h=>h.y))];const y=pick(ys);return wpick(HP.filter(h=>h.x===x&&h.y===y),h=>motW(h.m));};
+  for(let i=0;i<nH*3&&usedM.size<=nH&&HP.length;i++){const h=hPick();const key=h.x.name+'>'+h.y.name;if(used.has(key)||usedM.has(h.m.name))continue;used.add(key);usedM.add(h.m.name);motiveClue(h.m,h.x,h.y,true);}
   // alibis
   const busy=new Map();
   const pkeyOf=a=>a.pkey||'__none';
@@ -6872,7 +6917,7 @@ function attempt(r,forceMethod){
   const fakeP=new Map();for(const a of AL)if(a.ppool){const c=poolPartners(a,d,true);fakeP.set(a.id,c.length?pick(c):null);}
   const fpOf=a=>a.ppool?fakeP.get(a.id):fixedPartner(a,d);
   const fakeOpts=AL.filter(a=>allow(a)&&a.elig.includes(d)&&!a.needsSick&&!(a.ppool&&!fpOf(a))&&(!fpOf(a)||canNeed(fpOf(a),a.allNeeds))&&a.variants.some(v=>variantOK(v,d,a,true,fpOf(a))));
-  if(!fakeOpts.length)return null;const fa=pick(fakeOpts);const fp=fpOf(fa);
+  if(!fakeOpts.length)return null;const fa=W.g2===false?pick(fakeOpts):wpick(fakeOpts,alW);const fp=fpOf(fa);
   {let vs=fa.variants.filter(v=>variantOK(v,d,fa,true,fp));const self=vs.filter(v=>vSpeaker(v,d,exOf(fa,fp))===d.name);if(self.length&&r()<0.7)vs=self;busy.set(d.name,{a:fa,fake:true,v:pick(vs),p:fp});}
   const assign=(c,wantSelf)=>{if(busy.has(c.name)||c===s||c===d||!free(c))return false;
     const PP=new Map();
@@ -6883,10 +6928,10 @@ function attempt(r,forceMethod){
       PP.set(a.id,p||null);return a.variants.some(v=>variantOK(v,c,a,false,p||null));});
     if(!opts.length)return false;
     let pool=opts;if(wantSelf){const self=opts.filter(a=>a.variants.some(v=>variantOK(v,c,a,false,PP.get(a.id))&&vSpeaker(v,c,exOf(a,PP.get(a.id)))===c.name));if(self.length)pool=self;else return false;}
-    const a=pick(pool);const p0=PP.get(a.id);const ex0=exOf(a,p0);let vs=a.variants.filter(v=>variantOK(v,c,a,false,p0));if(wantSelf){const sv=vs.filter(v=>vSpeaker(v,c,ex0)===c.name);if(sv.length)vs=sv;}
+    const a=W.g2===false?pick(pool):wpick(pool,alW);const p0=PP.get(a.id);const ex0=exOf(a,p0);let vs=a.variants.filter(v=>variantOK(v,c,a,false,p0));if(wantSelf){const sv=vs.filter(v=>vSpeaker(v,c,ex0)===c.name);if(sv.length)vs=sv;}
     const usedT=new Set([...busy.entries()].filter(([n,b])=>!b.partnerOf).map(([n,b])=>render(b.v,byName(n),exOf(b.a,b.p))));const fresh=vs.filter(v=>!usedT.has(render(v,c,ex0)));if(fresh.length)vs=fresh;
     const hadP=p0&&busy.has(p0.name);busy.set(c.name,{a,v:pick(vs),p:p0});if(p0&&!hadP)busy.set(p0.name,{a,partnerOf:a.id,mainOf:c.name});
-    if(C&&!condOK(C)){busy.delete(c.name);if(p0&&!hadP)busy.delete(p0.name);return false;}return true;};
+    if((C&&!condOK(C))||(loose.length&&!loose.every(x=>looseOK(x)))){busy.delete(c.name);if(p0&&!hadP)busy.delete(p0.name);return false;}return true;};
   for(const c of shuf(inn))if(r()<0.6)assign(c,false);
   if(M.kind==='sleep'){const sp=spouseOf(s);if(sp&&sp!==d){if(!busy.has(sp.name)&&!assign(sp,false))return null;const b=busy.get(sp.name);if(!b||norm(b.a.place||'')==='bedroom')return null;}}
   // contradiction
@@ -6908,12 +6953,25 @@ function attempt(r,forceMethod){
     if(c.specific){if(c.tags!==fa.name)return false;}
     else if(c.tags!=='Any'&&c.tags!==fa.tag)return false;
     return condOK(c);});
-  if(!okC.length)return null;{const sp=okC.filter(c=>c.specific),gn=okC.filter(c=>!c.specific);C=pick(sp.length&&(!gn.length||r()<0.5)?sp:gn);}
+  if(!okC.length)return null;{const sp=okC.filter(c=>c.specific),gn=okC.filter(c=>!c.specific);C=pick(sp.length&&(!gn.length||r()<0.75)?sp:gn);}
   const partner=/second character/i.test(C.cond||'')?fp:null;
   const other=pick(PLACEPOOL.filter(p=>p!==fa.place&&p!==place));
   const cv={suspect:d.name,'place of murder':place,'place of alibi':fa.place||fa.name,'time of murder':C.form==='Witness'?TW:TT,'other place':other,partner:partner?partner.name:'',__places:['place of murder','place of alibi','other place']};
   let ctext=fill(C.clue,cv),csi=null;
   if(!speakerOf(ctext)&&C.form==='Witness'){csi=slot([d,...namesIn(ctext)],'w');ctext=MK(csi)+': '+ctext.replace(/^'(.*)'$/,'"$1"');}
+  // loose contradictions: false leads about an alibi nobody has in this level
+  const heldNames=()=>new Set([...busy.values()].map(b=>norm(b.a.name)).concat([...planHolders.values()].flatMap(p=>[norm(p.name)].concat(p.alibi?[norm(p.alibi.name)]:[]))));
+  const looseOK=c=>{if(heldNames().has(norm(c.tags)))return false;
+    for(const sg of segs(c.cond)){let m;
+      if(m=sg.match(/^(.+?) is not the Suspect/i)){if(byName(m[1])===d)return false;}
+      else if(m=sg.match(/nobody else has an alibi in (?:the )?(.+)$/i)){const room=norm(m[1]);if([...busy.values()].some(b=>norm(b.a.place||'')===room)||norm(place)===room)return false;}
+      else if(m=sg.match(/nobody else has an? (Outside|Inside) alibi/i)){if([...busy.values()].some(b=>b.a.tag===m[1]))return false;}
+      else if(m=sg.match(/not with the method (.+)$/i)){if(norm(m[1])===norm(M.name))return false;}}
+    return true;};
+  {const cand=shuf(CS.filter(c=>c!==C&&!/\((Suspect|Partner)\)/i.test(c.clue)&&looseOK(c)));const n=1+(r()<0.25?1:0);
+    for(const c of cand){if(loose.length>=n)break;loose.push(c);if(!loose.every(looseOK))loose.pop();}}
+  const looseTexts=loose.map(c=>{let t=fill(c.clue,{'place of murder':place,__places:['place of murder']}),si=null;
+    if(!speakerOf(t)&&c.form==='Witness'){si=slot(namesIn(t),'w');t=MK(si)+': '+t.replace(/^'(.*)'$/,'"$1"');}return {c,t,si};});
   // red herrings
   const rhs=[];
   const addHerring=()=>{for(const h of shuf(RH)){if(rhs.some(x=>x.h===h))continue;
@@ -6937,6 +6995,7 @@ function attempt(r,forceMethod){
       out.push({cat:'Alibi',form:'',place:a.place||(a.tag==='Outside'?'Outside the castle':''),text,srcName:'Alibis · '+a.name,eff:{type:'alibi',names,key:b.fake?'fake':n},fake:!!b.fake,who:n,speaker:speakerOf(text,n),time:a.fromTxt+'–'+a.toTxt,needs:a.needs});}
     return out;};
   const assemble=()=>{const L={clues:[...clues,...buildAlibis()]};
+    looseTexts.forEach(x=>L.clues.push({cat:'Contradiction',form:x.c.form,place:x.c.place,text:x.t,srcName:'Contradictions · alibi specific · '+x.c.name,eff:{type:'none'},loose:true,slot:x.si}));
     L.clues.push({cat:'Contradiction',form:C.form,place:C.place==='(place of murder)'?place:C.place==='(place of alibi)'?(fa.place||fa.name):C.place.replace('(Suspect)',d.name),text:ctext,srcName:(C.specific?'Contradictions · alibi specific · ':'Contradictions · ')+C.name,eff:{type:'refute',key:'fake'},slot:csi});
     rhs.forEach(x=>{L.clues.push({cat:'Red herring',form:'',place:'',text:x.susp,srcName:'Red Herrings · '+x.h.name,eff:{type:'none'},rhNote:'Suspicion'});
       L.clues.push({cat:'Red herring',form:'',place:'',text:x.ex2,srcName:'Red Herrings · '+x.h.name,eff:{type:'none'},rhNote:'Explanation'});});
@@ -6977,6 +7036,7 @@ const CATN={'Method':'Method clues','Plan':'Plans for tonight','Motive':'Motives
 let L=null,on=new Set(),mode=-1,autoRule=false,playMode=true,order=[];
 function logic(c){const e=c.eff;
   if(e.planA)return 'Only the '+e.names.join(', ')+' will be there at that time → the victim';
+  if(c.loose)return 'False lead: about an alibi nobody has tonight, refutes nothing';
   if(c.cat==='Plan')return c.isVictimPlan?'Plan for tonight (not an alibi)':'Plan for tonight (a decoy, not an alibi)';
   if(e.type==='list')return (e.rol==='d'?'Murderer can only be: ':'Victim can only be: ')+e.names.join(', ');
   if(e.type==='partial')return (e.rol==='d'?'Murderer is one of: ':'Victim is one of: ')+e.names.join(', ');
@@ -6993,7 +7053,7 @@ function renderClues(){const el=document.getElementById('clues');
     return '<div><h3>'+CATN[cat]+'</h3><div class="cat-list">'+cs.map(c=>{
       const meta=[c.form,c.place,c.cat==='Alibi'?'about: '+c.who+(c.time?' · '+c.time:'')+(c.needs&&c.needs.length?' · needs '+c.needs.join(', '):''):''].filter(Boolean).map(esc).join(' · ');
       return '<label class="clue'+(on.has(c.id)?'':' off')+'" for="cb-'+c.id+'"><input type="checkbox" id="cb-'+c.id+'" data-id="'+c.id+'"'+(on.has(c.id)?' checked':'')+'>'+
-      '<div><div class="meta">'+(meta?'<span>'+meta+'</span>':'')+'<span class="src">'+esc(c.srcName)+'</span>'+(c.fake?'<span class="tag-fake">fake alibi</span>':'')+'</div><div class="clue-text">'+esc(c.text)+'</div></div>'+
+      '<div><div class="meta">'+(meta?'<span>'+meta+'</span>':'')+'<span class="src">'+esc(c.srcName)+'</span>'+(c.fake?'<span class="tag-fake">fake alibi</span>':'')+(c.loose?'<span class="tag-fake">false lead</span>':'')+'</div><div class="clue-text">'+esc(c.text)+'</div></div>'+
       '<div class="logic'+(['info','none'].includes(c.eff.type)?' muted':'')+'">→ '+esc(logic(c))+'</div></label>';}).join('')+'</div></div>';}).join('');
   el.querySelectorAll('input').forEach(i=>i.addEventListener('change',()=>{i.checked?on.add(i.dataset.id):on.delete(i.dataset.id);i.closest('.clue').classList.toggle('off',!i.checked);renderPanel();}));}
 function renderPanel(){const res=solve(L,on);
