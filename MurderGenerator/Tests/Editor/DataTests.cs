@@ -38,6 +38,8 @@ namespace FifteenBraincells.MurderGenerator.Tests
                 .Concat(db.Alibis.SelectMany(a => a.Variants.Select(v => v.Line.TextKey).Append(a.NameKey).Append(a.PlaceKey)))
                 .Concat(db.Contradictions.Select(c => c.Line.TextKey))
                 .Concat(db.RedHerrings.SelectMany(h => new[] { h.Suspicion.Line.TextKey, h.Explanation.Line.TextKey }))
+                .Concat(db.VictimPlans.Where(p => p.Line != null).Select(p => p.Line.TextKey))
+                .Concat(TestData.Strings.Keys.Where(k => k.StartsWith("time_")))
                 .Concat(new[]
                 {
                     Text.ClueTextRenderer.ListSeparatorKey,
@@ -53,7 +55,7 @@ namespace FifteenBraincells.MurderGenerator.Tests
         {
             var dto = new GeneratorDataDto();
             dto.characters.Add(new CharacterDto { id = "chef", homeRoom = "nowhere", tags = { "cook" } });
-            dto.methods.Add(new MethodDto { id = "m", time = "25:00" });
+            dto.methods.Add(new MethodDto { id = "m", kind = "Fixed", windowStart = "25:00", windowEnd = "18:00" });
 
             var exception = Assert.Throws<GeneratorDataException>(() => DatabaseBuilder.Build(dto));
             Assert.IsTrue(exception.Errors.Count >= 3, exception.Message);

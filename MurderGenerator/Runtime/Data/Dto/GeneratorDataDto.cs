@@ -20,6 +20,7 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public List<AlibiDto> alibis = new List<AlibiDto>();
         public List<ContradictionDto> contradictions = new List<ContradictionDto>();
         public List<RedHerringDto> redHerrings = new List<RedHerringDto>();
+        public List<VictimPlanDto> victimPlans = new List<VictimPlanDto>();
     }
 
     [Serializable]
@@ -39,6 +40,18 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public int maxAttempts = 60;
         public int maxExtraAlibiRounds = 12;
         public string liftingRequiresTag = "strong";
+        public int timeStepMinutes = 5;
+        public string soloEarliest = "17:30";
+        public string soloLatest = "20:30";
+        public int soloMarginMinutes = 30;
+        public string defaultBedtime = "19:00";
+        public float decoyChance = 0.5f;
+        public int looseContradictionsMin = 1;
+        public int looseContradictionsMax = 2;
+        public float secondLooseContradictionChance = 0.25f;
+        public int maxLinesPerCharacter = 2;
+        public bool weightedMotives = true;
+        public bool weightedAlibis = true;
     }
 
     [Serializable]
@@ -87,10 +100,16 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
     {
         public string id = "";
         public string nameKey = "";
-        public string time = "";
+        public string kind = "Fixed";
+        public string windowStart = "";
+        public string windowEnd = "";
         public List<string> rooms = new List<string>();
         public TagFilterDto suspects = new TagFilterDto();
         public TagFilterDto victims = new TagFilterDto();
+        public int sleepDelayMin;
+        public int sleepDelayMax;
+        public bool noOtherOutsideAlibi;
+        public bool allowDecoys;
     }
 
     [Serializable]
@@ -126,6 +145,10 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public bool excludedGetNoOtherAlibi;
         public bool listedGetNoOtherAlibi;
         public bool listOmitsSpeaker;
+        public List<string> excludedNoAlibiRooms = new List<string>();
+        public List<string> excludedNotBlockedFor = new List<string>();
+        public List<string> noOtherAlibiFor = new List<string>();
+        public List<string> suspectHasTags = new List<string>();
         public List<string> blocks = new List<string>();
     }
 
@@ -146,6 +169,7 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public TagFilterDto victims = new TagFilterDto();
         public bool sameRole;
         public bool differentSex;
+        public string notBothTag = "";
         public LineDto clue = new LineDto();
     }
 
@@ -183,6 +207,7 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public List<string> needs = new List<string>();
         public List<string> notWithMethods = new List<string>();
         public string requiresOtherHolderOf = "";
+        public bool oneInSameRoom;
         public List<AlibiVariantDto> variants = new List<AlibiVariantDto>();
     }
 
@@ -207,6 +232,22 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public List<string> onlyForAlibis = new List<string>();
         public List<string> notForAlibis = new List<string>();
         public List<string> notWithMethods = new List<string>();
+        public bool onlyForBathroomAlibis;
+        public bool noOtherAlibiInBathroom;
+        public bool mentionsSuspect;
+    }
+
+    [Serializable]
+    public sealed class VictimPlanDto
+    {
+        public string id = "";
+        public string method = "";
+        public TagFilterDto holders = new TagFilterDto();
+        public string alibi = "";
+        public bool solo;
+        public string time = "";
+        public string sameAsAlibi = "";
+        public LineDto clue = new LineDto();
     }
 
     [Serializable]

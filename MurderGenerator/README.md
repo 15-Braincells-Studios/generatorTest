@@ -64,17 +64,32 @@ succeed on the first attempt. Each step is in its own file:
 
 | Step | File | What happens |
 |---|---|---|
-| 1 | `LevelAttempt.Crime.cs` | Pick a method and murder room, then a suspect and a victim that fit the method and share a motive. Add method clues: each clue group (A-D) is rolled against its chance. Add the real motive plus 1-2 false leads. |
-| 2 | `LevelAttempt.Alibis.cs` | Give the suspect a fake alibi. Give innocent characters real alibis, respecting Needs and Blocks. |
-| 3 | `LevelAttempt.Contradiction.cs` | Pick the clue that breaks the fake alibi. When an alibi-specific contradiction fits, it is used with `specificContradictionChance` (50%). |
+| 1 | `LevelAttempt.Crime.cs` | Pick the victim, then the murderer (equal chances for every character), then a method (one that fits few pairs gets a bigger chance) and a motive (one that fits few pairs gets a bigger chance). Then the time and murder room: from the method's time window, or from the victim's plan. Add method clues: each clue group (A-D) is rolled against its chance. Add the real motive plus 1-2 false leads. |
+| 1b | `LevelAttempt.Plans.cs` | With a plan method: the victim's plan for tonight, sometimes a decoy with a plan of the same kind, and their plan lines. |
+| 2 | `LevelAttempt.Alibis.cs` | Give the suspect a fake alibi. An alibi that few characters may hold gets a bigger chance. |
+| 3 | `LevelAttempt.Contradiction.cs` | Pick the clue that breaks the fake alibi (alibi-specific with `specificContradictionChance`, 75%). Then give innocent characters real alibis, and add 1-2 loose contradictions: alibi-specific ones about an alibi nobody has tonight, as a false lead. |
 | 4 | `LevelAttempt.RedHerrings.cs` | Add 1-2 suspicious-looking things about innocent characters, each with its explanation. |
-| 5 | `LevelAttempt.Speakers.cs` | While the solver still finds another answer, give one of those wrong people an alibi. Then fill the unnamed witnesses and explainers, so that every character has at least one line. |
+| 5 | `LevelAttempt.Speakers.cs` | While the solver still finds another answer, give one of those wrong people an alibi. Then fill the unnamed witnesses and explainers, so that every character has at least one line and nobody more than two. |
+
+### Method kinds
+
+| Kind | Time | Murder room |
+|---|---|---|
+| `Fixed` | A random time in the method's window, in steps of 5 minutes | From the method |
+| `Plan` | When the victim's plan starts | From the method (`victim_bathroom`: the royal bathroom for Royalty, the staff bathroom for Staff) |
+| `Solo` | A random time inside the victim's solo alibi, at least 30 minutes from its start and end | That alibi's room |
+| `Sleep` | 15 to 30 minutes after the victim's bedtime, at most 20:00 | The victim's bedroom, or the infirmary with the plan Sick |
+
+A plan is not an alibi: nobody with a plan gets an alibi, and an alibi used as a plan by a method (an outside alibi
+for the ambush, a bath) is never an alibi with that method.
 
 Rules that hold in every level. Each one is checked by a test.
 
 - Exactly one murderer and victim fit the clues, and they are the real ones. Without the contradiction,
   the fake alibi still clears the murderer.
-- Every character has at least one line. The victim never has a real alibi.
+- Every character has at least one line and at most two. The line about their own evening (their alibi or
+  plan) comes first: `Level.LinesOf` returns them in that order.
+- The victim never has a real alibi. Nobody with a plan has an alibi.
 - A character named by an `(excluded)` clue gets that clue's **Blocks** for the day. A blocked character
   never gets an alibi or red herring that **Needs** the same thing, and that includes partners. Lifting
   also requires the tag in `liftingRequiresTag`.
@@ -87,7 +102,7 @@ Rules that hold in every level. Each one is checked by a test.
 
 ## The data
 
-The JSON is now the source of truth. It was converted once from `Generation Tables.xlsx`.
+The JSON is converted from `Generation Tables.xlsx` (the converter is kept outside this folder).
 
 ### `strings_en.json`
 
@@ -105,7 +120,7 @@ you are talking to. Placeholders are named, not numbered, so the text stays read
 | `{suspect}` `{victim}` `{character}` `{partner}` `{tutor}` `{sick_character}` | a character, e.g. "the King" |
 | `{list}` `{partial_list}` `{excluded}` | a list, e.g. "the Chef, the Queen and me" |
 | `{murder_place}` `{alibi_place}` `{other_place}` | a room, e.g. "the library" or "the King's bedroom" |
-| `{murder_time}` | a time, e.g. 18:00 |
+| `{murder_time}` | a time: in words in spoken lines ("ten past seven", from the `time_*` strings), in digits on notes |
 
 ### `generator_data.json`
 
@@ -125,7 +140,9 @@ Every free-text rule from the Excel is now a field. The main building blocks:
   - `FullList`, `PartialList`, `Excluded`: these follow the placeholders.
   - `ExcludeFixed`, `OnlyFixed`: these name the characters directly, for clues that rule people out
     without a placeholder.
-- **Needs/Blocks** are `Hands`, `Writing`, `Lifting`, `Sight`, `Wine`, `Afternoon`.
+- **Needs/Blocks** are `Hands`, `Writing`, `Lifting`, `Sight`, `Wine`, `Afternoon`, `Outside` (every outside
+  alibi needs it), `Evening` (someone with an alibi or plan never gets a red herring that needs it) and `Bath`.
+- **Victim plans** (`victimPlans`) belong to a method. A plan has its own line and time, or uses an alibi.
 - **Settings** hold all tuning values: chances, counts and attempt limits.
 
 The data is validated when it is loaded. Every unknown id, tag, room, method, alibi, missing text key,
@@ -163,9 +180,11 @@ Two things are still English-only and are kept in one place, `ClueTextRenderer`:
 
 ## Verification
 
-All 22 tests pass. There are also two standalone checks:
-- **Stress test:** 10,000 random seeds give 0 failures. A level takes 1.01 attempts on average and about
+All 25 tests pass. There are also two standalone checks:
+- **Stress test:** 10,000 random seeds give 0 failures. A level takes 1.04 attempts on average and about
   2 ms to generate. Every row in the data appears in at least one level.
+- **Spread:** over 6,000 levels every character is murderer in 9.5-10.5% and victim in 9.2-11.1% of the
+  levels; no motive or alibi is used more than twice as often as the median one.
 - **Compile check:** the runtime compiles as C# 9 / netstandard2.1 with warnings as errors.
 
 ## Conversion notes

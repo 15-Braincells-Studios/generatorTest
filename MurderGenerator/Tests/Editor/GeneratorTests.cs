@@ -215,6 +215,121 @@ namespace FifteenBraincells.MurderGenerator.Tests
             Assert.IsEmpty(problems);
         }
 
+        private static bool SamePlace(AlibiAssignment a, AlibiAssignment b) =>
+            !a.Alibi.IsOutside && !b.Alibi.IsOutside
+            && a.Alibi.RoomFor(a.Holder) == b.Alibi.RoomFor(b.Holder)
+            && (a.Alibi.RoomId != "bedroom" || a.Holder == b.Holder);
+
+        // ------------------------------------------------------------------ plans, times, lines
+
+        [Test]
+        public void NobodySaysMoreThanTwoThingsAndTheirOwnEveningComesFirst()
+        {
+            var problems = Check(level => Db.Characters.Select(c =>
+            {
+                var lines = level.LinesOf(c).ToList();
+                if (lines.Count > Db.Settings.MaxLinesPerCharacter)
+                {
+                    return $"{c.Id} says {lines.Count} things";
+                }
+
+                if (lines.Count(l => l.IsAboutSpeaker) > 1)
+                {
+                    return $"{c.Id} has two lines about their own evening";
+                }
+
+                return lines.Count == 2 && lines[1].IsAboutSpeaker ? $"{c.Id}: own evening is not first" : null;
+            }).FirstOrDefault(p => p != null));
+            Assert.IsEmpty(problems);
+        }
+
+        [Test]
+        public void TheTimeFitsTheMethodInStepsOfFiveMinutes()
+        {
+            var problems = Check(level =>
+            {
+                var s = level.Solution;
+                if (s.MurderTime.Minutes % Db.Settings.TimeStepMinutes != 0 && s.Method.Kind != MethodKind.Plan)
+                {
+                    return $"time {s.MurderTime}";
+                }
+
+                switch (s.Method.Kind)
+                {
+                    case MethodKind.Fixed:
+                        return s.MurderTime.Minutes < s.Method.WindowStart.Minutes || s.MurderTime.Minutes > s.Method.WindowEnd.Minutes
+                            ? $"{s.MurderTime} outside the window" : null;
+                    case MethodKind.Plan:
+                        return s.MurderTime.Minutes != s.VictimPlan.StartTime.Minutes ? "not the plan's time" : null;
+                    case MethodKind.Solo:
+                        return s.MurderTime.Minutes < s.VictimPlan.Alibi.Start.Minutes + Db.Settings.SoloMarginMinutes
+                               || s.MurderTime.Minutes > s.VictimPlan.Alibi.End.Minutes - Db.Settings.SoloMarginMinutes
+                            ? "outside the solo plan" : null;
+                    default:
+                        return s.MurderTime.Minutes > s.Method.WindowEnd.Minutes ? "too late to be asleep" : null;
+                }
+            });
+            Assert.IsEmpty(problems);
+        }
+
+        [Test]
+        public void PlansAreNeverAlibisAndTheVictimHasOne()
+        {
+            var problems = Check(level =>
+            {
+                var s = level.Solution;
+                if (s.Method.Kind != MethodKind.Fixed && level.Plans.All(p => p.Holder != s.Victim || !p.IsVictims))
+                {
+                    return "the victim has no plan";
+                }
+
+                if (level.Plans.Any(p => level.Alibis.Any(a => a.Holder == p.Holder || a.Partner == p.Holder && !a.IsFake)))
+                {
+                    return "someone with a plan has an alibi";
+                }
+
+                if (s.Method.NoOtherOutsideAlibi && level.Alibis.Any(a => a.Alibi.IsOutside))
+                {
+                    return "an outside alibi with the ambush";
+                }
+
+                var bathrooms = level.Alibis.Where(a => a.Alibi.OneInSameRoom).Select(a => a.Alibi.RoomFor(a.Holder)).ToList();
+                return bathrooms.Count != bathrooms.Distinct().Count() ? "two alibis in one bathroom" : null;
+            });
+            Assert.IsEmpty(problems);
+        }
+
+        [Test]
+        public void LooseContradictionsAreAboutAlibisNobodyHasAndRefuteNothing()
+        {
+            var problems = Check(level =>
+            {
+                var loose = level.Clues.Where(c => c.IsFalseLead).ToList();
+                if (loose.Count < Db.Settings.LooseContradictionsMin)
+                {
+                    return "no loose contradiction";
+                }
+
+                foreach (var clue in loose)
+                {
+                    var contradiction = Db.Contradictions.Single(c => c.Id == clue.SourceId);
+                    if (clue.Effect.Kind != ClueEffectKind.None || contradiction.MentionsSuspect)
+                    {
+                        return $"{clue.SourceId} is not loose";
+                    }
+
+                    if (level.Alibis.Any(a => a.Alibi == contradiction.Alibi)
+                        || level.Plans.Any(p => p.Plan.Alibi == contradiction.Alibi || p.Plan.SameAsAlibi == contradiction.Alibi))
+                    {
+                        return $"{clue.SourceId} is about an alibi someone has";
+                    }
+                }
+
+                return null;
+            });
+            Assert.IsEmpty(problems);
+        }
+
         [Test]
         public void UnnamedWitnessesCanSeeAndAreNotWhoTheLineIsAbout()
         {
@@ -246,7 +361,10 @@ namespace FifteenBraincells.MurderGenerator.Tests
             var problems = Check(level =>
             {
                 var solution = level.Solution;
-                var notCovering = level.Alibis.FirstOrDefault(a => !a.Alibi.Covers(solution.Method, solution.MurderRoom.Room.Id));
+                var notCovering = level.Alibis.FirstOrDefault(a =>
+                    !(a.Alibi.Covers(solution.MurderTime, solution.Method, "", a.Holder)
+                      && (a.Alibi.IsOutside || a.Alibi.RoomFor(a.Holder) != solution.MurderRoom.Room.Id
+                          || (a.Alibi.RoomId == "bedroom" && solution.MurderRoom.Owner != a.Holder))));
                 if (notCovering != null)
                 {
                     return $"{notCovering.Alibi.Id} does not cover the murder";
@@ -286,7 +404,7 @@ namespace FifteenBraincells.MurderGenerator.Tests
                     : contradiction.AlibiTag == "Any" || (contradiction.AlibiTag == "Outside") == fake.Alibi.IsOutside, "alibi tag");
                 Require(!rules.NotSuspect.Contains(solution.Suspect), "not the suspect");
                 Require(!rules.AllOtherAlibisInside || others.All(a => !a.IsOutside), "all others inside");
-                Require(!rules.NoOtherAlibiAtAlibiPlace || others.All(a => a.IsOutside || a.RoomId != fake.Alibi.RoomId), "nobody else at that place");
+                Require(!rules.NoOtherAlibiAtAlibiPlace || level.Alibis.Where(a => !a.IsFake).All(a => !SamePlace(a, fake)), "nobody else at that place");
                 Require(rules.NoOtherAlibiInRoom == null || others.All(a => a.RoomId != rules.NoOtherAlibiInRoom.Id), "nobody else in the room");
                 Require(!rules.NoOtherOutsideAlibi || others.All(a => !a.IsOutside), "nobody else outside");
                 Require(rules.NoOtherHolderOf == null || !others.Contains(rules.NoOtherHolderOf), "nobody else has the alibi");
@@ -360,7 +478,8 @@ namespace FifteenBraincells.MurderGenerator.Tests
                     .Concat(Db.Motives.Select(m => m.Clue))
                     .Concat(Db.Alibis.SelectMany(a => a.Variants).Select(v => v.Line))
                     .Concat(Db.Contradictions.Select(c => c.Line))
-                    .Concat(Db.RedHerrings.SelectMany(h => new[] { h.Suspicion.Line, h.Explanation.Line }));
+                    .Concat(Db.RedHerrings.SelectMany(h => new[] { h.Suspicion.Line, h.Explanation.Line }))
+                    .Concat(Db.VictimPlans.Where(p => p.Line != null).Select(p => p.Line));
                 _speakerKindByTextKey = lines.ToDictionary(l => l.TextKey, l => l.Speaker.Kind);
             }
 

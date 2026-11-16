@@ -5,39 +5,95 @@ using FifteenBraincells.MurderGenerator.Output;
 
 namespace FifteenBraincells.MurderGenerator.Generation
 {
-    // Step 1: the crime itself, the method clues and the motives.
+    // Step 1: the crime itself (who, how, when, where, why), the method clues and the motives.
     internal sealed partial class LevelAttempt
     {
-        /// <summary>Picks the method, murder room, suspect, victim and a motive that fits them.</summary>
+        /// <summary>
+        /// Picks the victim, murderer, method and motive, then the victim's plan, the time and the murder room.
+        /// With weighted motives the victim and then the murderer are picked with equal chances, so every
+        /// character is murderer and victim about equally often; then a method (one that fits few pairs gets a
+        /// bigger chance) and a motive (one that fits few pairs gets a bigger chance).
+        /// </summary>
         private bool ChooseCrime()
         {
-            _method = _forcedMethod ?? _rng.Pick(_db.Methods);
-            _murderRoom = new PlacedRoom(_db.GetRoom(_rng.Pick(_method.RoomIds)));
-
-            var crimes = new List<(Character Suspect, Character Victim, List<Motive> Motives)>();
-            foreach (var suspect in Cast.Where(_method.Suspects.Matches))
-            {
-                foreach (var victim in Cast.Where(_method.Victims.Matches))
-                {
-                    var motives = _db.Motives.Where(m => m.Fits(suspect, victim)).ToList();
-                    if (motives.Count > 0)
-                    {
-                        crimes.Add((suspect, victim, motives));
-                    }
-                }
-            }
-
-            if (crimes.Count == 0)
+            var crime = _settings.WeightedMotives ? PickCrimeWeighted() : PickCrimeUniform();
+            if (crime == null)
             {
                 return false;
             }
 
-            var crime = _rng.Pick(crimes);
+            _method = crime.Method;
             _suspect = crime.Suspect;
             _victim = crime.Victim;
-            _motive = _rng.Pick(crime.Motives);
+            _motive = _settings.WeightedMotives
+                ? _rng.PickWeighted(crime.Motives, _cache.MotiveWeight)
+                : _rng.Pick(crime.Motives);
             _mayNotHaveAlibi.Add(_victim); // the victim will be at the murder place
-            return true;
+            return ChooseTimeAndPlace();
+        }
+
+        private Crime PickCrimeUniform()
+        {
+            var crimes = _cache.Crimes[_forcedMethod ?? _rng.Pick(_db.Methods)];
+            return crimes.Count == 0 ? null : _rng.Pick(crimes);
+        }
+
+        private Crime PickCrimeWeighted()
+        {
+            var methods = _forcedMethod != null ? new[] { _forcedMethod } : _db.Methods.ToArray();
+            var crimes = methods.SelectMany(m => _cache.Crimes[m]).ToList();
+            if (crimes.Count == 0)
+            {
+                return null;
+            }
+
+            var victim = _rng.Pick(crimes.Select(c => c.Victim).Distinct().ToList());
+            var suspect = _rng.Pick(crimes.Where(c => c.Victim == victim).Select(c => c.Suspect).Distinct().ToList());
+            var options = crimes.Where(c => c.Victim == victim && c.Suspect == suspect).ToList();
+            return _rng.PickWeighted(options, c => 1.0 / _cache.Crimes[c.Method].Count);
+        }
+
+        /// <summary>The time of murder and the murder room, from the method or from the victim's plan.</summary>
+        private bool ChooseTimeAndPlace()
+        {
+            var s = _settings;
+            switch (_method.Kind)
+            {
+                case MethodKind.Fixed:
+                    _murderTime = _rng.Pick(GenerationCache.Steps(s, _method.WindowStart.Minutes, _method.WindowEnd.Minutes));
+                    _murderRoom = new PlacedRoom(_db.GetRoom(_rng.Pick(_method.RoomIds)));
+                    return true;
+
+                case MethodKind.Plan:
+                    _victimPlan = _rng.Pick(GenerationCache.PlansFor(_db, _method, _victim));
+                    _murderTime = _victimPlan.StartTime;
+                    var roomId = _rng.Pick(_method.RoomIds);
+                    _murderRoom = new PlacedRoom(_db.GetRoom(roomId == RoomRef.VictimBathroom ? RoomRef.BathroomOf(_victim) : roomId));
+                    return true;
+
+                case MethodKind.Solo:
+                    _victimPlan = _rng.Pick(GenerationCache.PlansFor(_db, _method, _victim));
+                    _murderTime = _rng.Pick(GenerationCache.SoloTimes(s, _victimPlan));
+                    _murderRoom = PlaceOf(_victimPlan.Alibi, _victim);
+                    return _murderRoom != null;
+
+                case MethodKind.Sleep:
+                    _victimPlan = _rng.Pick(GenerationCache.PlansFor(_db, _method, _victim));
+                    var sleepsInInfirmary = _victimPlan.Alibi != null && _victimPlan.Alibi.RoomId == "infirmary";
+                    _murderRoom = sleepsInInfirmary ? new PlacedRoom(_db.GetRoom("infirmary")) : BedroomOf(_victim);
+                    var bedtime = _victimPlan.Alibi == null && _victimPlan.Time.HasValue ? _victimPlan.Time.Value : s.DefaultBedtime;
+                    var times = GenerationCache.Steps(s, bedtime.Minutes + _method.SleepDelayMin,
+                        System.Math.Min(_method.WindowEnd.Minutes, bedtime.Minutes + _method.SleepDelayMax));
+                    if (times.Count == 0)
+                    {
+                        return false;
+                    }
+
+                    _murderTime = _rng.Pick(times);
+                    return true;
+            }
+
+            return false;
         }
 
         // ------------------------------------------------------------------ method clues
@@ -62,7 +118,9 @@ namespace FifteenBraincells.MurderGenerator.Generation
 
         private bool IsUsable(MethodClue clue)
         {
-            if (clue.NotSuspect.Contains(_suspect) || clue.NotVictim.Contains(_victim))
+            if (clue.NotSuspect.Contains(_suspect) || clue.NotVictim.Contains(_victim)
+                || !clue.SuspectHasTags.All(_suspect.HasTag) || clue.NoOtherAlibiFor.Contains(_victim)
+                || IsFull(clue.Line.Speaker.Character))
             {
                 return false;
             }
@@ -83,7 +141,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
         private void AddMethodClue(MethodClue clue)
         {
             var role = clue.EffectRole;
-            var args = Args(("murder_place", new RoomArg(_murderRoom)));
+            var args = Args(("murder_place", new RoomArg(_murderRoom)), ("murder_time", new TimeArg(_murderTime)));
             var effect = ClueEffect.Nothing;
             IReadOnlyList<Character> named = null;
 
@@ -117,6 +175,16 @@ namespace FifteenBraincells.MurderGenerator.Generation
                         {
                             _mayNotHaveAlibi.Add(character);
                         }
+
+                        if (clue.ExcludedNoAlibiRooms.Count > 0)
+                        {
+                            if (!_noAlibiRooms.TryGetValue(character, out var rooms))
+                            {
+                                _noAlibiRooms[character] = rooms = new HashSet<string>();
+                            }
+
+                            rooms.UnionWith(clue.ExcludedNoAlibiRooms);
+                        }
                     }
 
                     break;
@@ -136,6 +204,14 @@ namespace FifteenBraincells.MurderGenerator.Generation
                 _mayNotHaveAlibi.UnionWith(named.Where(c => c != _suspect));
             }
 
+            _mayNotHaveAlibi.UnionWith(clue.NoOtherAlibiFor);
+
+            if (clue.Group == ClueGroup.WhenAndWhere && (_method.Kind == MethodKind.Plan || _method.Kind == MethodKind.Solo))
+            {
+                // Time and place point at one plan for tonight: the victim's.
+                effect = ClueEffect.OnlyThese(CrimeRole.Victim, new[] { _victim });
+            }
+
             AddClue(ClueCategory.Method, clue.Id, clue.Line, args, effect, new LineContext { Suspect = _suspect, Victim = _victim });
         }
 
@@ -153,7 +229,10 @@ namespace FifteenBraincells.MurderGenerator.Generation
         private List<Character> ExcludedCandidates(MethodClue clue)
         {
             var filter = clue.ExcludedFilter.IsEmpty ? _method.PoolFor(clue.EffectRole) : clue.ExcludedFilter;
-            return Innocents.Where(c => c != clue.Line.Speaker.Character && filter.Matches(c)).ToList();
+            return Innocents
+                .Where(c => c != clue.Line.Speaker.Character && filter.Matches(c)
+                            && CanDo(c, clue.ExcludedNotBlockedFor) && !_mayNotHaveAlibi.Contains(c))
+                .ToList();
         }
 
         // ------------------------------------------------------------------ motives
@@ -172,21 +251,29 @@ namespace FifteenBraincells.MurderGenerator.Generation
                     .Select(m => (Motive: m, Suspect: suspect, Victim: victim))))
                 .ToList();
 
-            foreach (var option in _rng.Shuffled(options))
+            for (var tries = 0; tries < falseLeads * 6 && usedMotives.Count <= falseLeads; tries++)
             {
-                if (usedMotives.Count > falseLeads)
+                var left = options.Where(o => !usedMotives.Contains(o.Motive) && !usedPairs.Contains((o.Suspect, o.Victim))).ToList();
+                if (left.Count == 0)
                 {
                     break;
                 }
 
-                if (usedMotives.Contains(option.Motive) || !usedPairs.Add((option.Suspect, option.Victim)))
-                {
-                    continue;
-                }
-
+                // Weighted: an innocent first, then someone they could have a motive against, then the motive.
+                var option = _settings.WeightedMotives ? PickFalseLead(left) : _rng.Pick(left);
                 usedMotives.Add(option.Motive);
+                usedPairs.Add((option.Suspect, option.Victim));
                 AddMotiveClue(option.Motive, option.Suspect, option.Victim);
             }
+        }
+
+        private (Motive Motive, Character Suspect, Character Victim) PickFalseLead(
+            List<(Motive Motive, Character Suspect, Character Victim)> options)
+        {
+            var suspect = _rng.Pick(options.Select(o => o.Suspect).Distinct().ToList());
+            var victim = _rng.Pick(options.Where(o => o.Suspect == suspect).Select(o => o.Victim).Distinct().ToList());
+            return _rng.PickWeighted(options.Where(o => o.Suspect == suspect && o.Victim == victim).ToList(),
+                o => _cache.MotiveWeight(o.Motive));
         }
 
         private void AddMotiveClue(Motive motive, Character suspect, Character victim)

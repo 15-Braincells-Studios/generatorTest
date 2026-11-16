@@ -12,7 +12,11 @@ namespace FifteenBraincells.MurderGenerator.Text
             var solution = level.Solution;
             var text = new StringBuilder();
             text.AppendLine($"Level {level.Seed} (attempt {level.Attempts})");
-            text.AppendLine($"  Method:        {solution.Method.Id} at {solution.Method.Time} in {solution.MurderRoom}");
+            text.AppendLine($"  Method:        {solution.Method.Id} at {solution.MurderTime} in {solution.MurderRoom}");
+            if (solution.VictimPlan != null)
+            {
+                text.AppendLine($"  Victim's plan: {solution.VictimPlan.Id}");
+            }
             text.AppendLine($"  Murderer:      {solution.Suspect.Id}");
             text.AppendLine($"  Victim:        {solution.Victim.Id}");
             text.AppendLine($"  Motive:        {solution.Motive.Id}");
@@ -30,7 +34,7 @@ namespace FifteenBraincells.MurderGenerator.Text
                 text.AppendLine($"  {renderer.RenderName(character)}");
                 foreach (var clue in level.LinesOf(character))
                 {
-                    text.AppendLine($"    - {renderer.Render(clue)}  [{clue.Category}: {clue.SourceId}]");
+                    text.AppendLine($"    - {renderer.Render(clue)}  [{clue.Category}: {clue.SourceId}{(clue.IsFalseLead ? ", false lead" : "")}]");
                 }
             }
 

@@ -59,6 +59,8 @@ namespace FifteenBraincells.MurderGenerator.Generation
         public PlacedRoom Room;
         public Dictionary<string, TextArg> Args;
         public ClueEffect Effect;
+        public Character About;
+        public bool IsFalseLead;
 
         public Character Speaker => FixedSpeaker ?? Slot?.Assigned;
     }

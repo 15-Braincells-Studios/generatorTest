@@ -13,6 +13,7 @@ namespace FifteenBraincells.MurderGenerator.Data
         private readonly Dictionary<string, Room> _roomsById;
         private readonly Dictionary<string, Method> _methodsById;
         private readonly Dictionary<(Method, ClueGroup), IReadOnlyList<MethodClue>> _cluesByMethodAndGroup;
+        private readonly Dictionary<Method, IReadOnlyList<VictimPlan>> _plansByMethod;
 
         internal GeneratorDatabase(
             GeneratorSettings settings,
@@ -24,7 +25,8 @@ namespace FifteenBraincells.MurderGenerator.Data
             IReadOnlyList<Motive> motives,
             IReadOnlyList<Alibi> alibis,
             IReadOnlyList<Contradiction> contradictions,
-            IReadOnlyList<RedHerring> redHerrings)
+            IReadOnlyList<RedHerring> redHerrings,
+            IReadOnlyList<VictimPlan> victimPlans)
         {
             Settings = settings;
             Characters = characters;
@@ -36,6 +38,8 @@ namespace FifteenBraincells.MurderGenerator.Data
             Alibis = alibis;
             Contradictions = contradictions;
             RedHerrings = redHerrings;
+            VictimPlans = victimPlans;
+            _plansByMethod = victimPlans.GroupBy(p => p.Method).ToDictionary(g => g.Key, g => (IReadOnlyList<VictimPlan>)g.ToList());
 
             _charactersById = characters.ToDictionary(c => c.Id);
             _roomsById = rooms.ToDictionary(r => r.Id);
@@ -55,6 +59,11 @@ namespace FifteenBraincells.MurderGenerator.Data
         public IReadOnlyList<Alibi> Alibis { get; }
         public IReadOnlyList<Contradiction> Contradictions { get; }
         public IReadOnlyList<RedHerring> RedHerrings { get; }
+        public IReadOnlyList<VictimPlan> VictimPlans { get; }
+
+        /// <summary>The plans a victim (or decoy) can have with this method. Empty for Fixed methods.</summary>
+        public IReadOnlyList<VictimPlan> GetPlans(Method method) =>
+            _plansByMethod.TryGetValue(method, out var plans) ? plans : new VictimPlan[0];
 
         public Character GetCharacter(string id) => _charactersById[id];
 

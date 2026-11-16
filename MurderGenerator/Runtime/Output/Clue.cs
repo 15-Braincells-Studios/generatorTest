@@ -11,6 +11,8 @@ namespace FifteenBraincells.MurderGenerator.Output
         Alibi,
         Contradiction,
         RedHerring,
+        /// <summary>What the victim (or a decoy) does tonight. Not an alibi.</summary>
+        Plan,
     }
 
     /// <summary>
@@ -20,8 +22,11 @@ namespace FifteenBraincells.MurderGenerator.Output
     public sealed class Clue
     {
         internal Clue(ClueCategory category, string sourceId, ClueForm form, Character speaker, PlacedRoom room,
-            string textKey, IReadOnlyDictionary<string, TextArg> args, ClueEffect effect)
+            string textKey, IReadOnlyDictionary<string, TextArg> args, ClueEffect effect, Character about = null,
+            bool isFalseLead = false)
         {
+            About = about;
+            IsFalseLead = isFalseLead;
             Category = category;
             SourceId = sourceId;
             Form = form;
@@ -53,6 +58,15 @@ namespace FifteenBraincells.MurderGenerator.Output
         public ClueEffect Effect { get; }
 
         public bool IsSpoken => Speaker != null;
+
+        /// <summary>For alibis and plans: whose evening it is about.</summary>
+        public Character About { get; }
+
+        /// <summary>A line about the speaker's own evening (their alibi or plan). It comes first in a conversation.</summary>
+        public bool IsAboutSpeaker => Speaker != null && Speaker == About;
+
+        /// <summary>A loose contradiction about an alibi nobody has: it refutes nothing.</summary>
+        public bool IsFalseLead { get; }
 
         public override string ToString() => $"{Category} {SourceId}";
     }

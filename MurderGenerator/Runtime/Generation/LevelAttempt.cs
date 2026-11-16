@@ -10,11 +10,13 @@ namespace FifteenBraincells.MurderGenerator.Generation
     /// One try at building a level. Each step can fail (the data offers no fitting option); then the
     /// whole attempt is dropped and <see cref="LevelGenerator"/> starts a new one.
     /// The steps live in separate files of this partial class, in the order they run:
-    /// Crime (method, suspect, victim, motive and method clues), Alibis, Contradiction, RedHerrings, Speakers.
+    /// Crime (victim, murderer, method, time, place, motive, method clues), Plans, Alibis, Contradiction,
+    /// RedHerrings, Speakers.
     /// </summary>
     internal sealed partial class LevelAttempt
     {
         private readonly GeneratorDatabase _db;
+        private readonly GenerationCache _cache;
         private readonly GeneratorSettings _settings;
         private readonly Rng _rng;
         private readonly Method _forcedMethod;
@@ -26,16 +28,20 @@ namespace FifteenBraincells.MurderGenerator.Generation
         // What each character can do today and whether they may still be given an alibi.
         private readonly Dictionary<Character, Need> _blocked = new Dictionary<Character, Need>();
         private readonly HashSet<Character> _mayNotHaveAlibi = new HashSet<Character>();
+        private readonly Dictionary<Character, HashSet<string>> _noAlibiRooms = new Dictionary<Character, HashSet<string>>();
 
         private Method _method;
         private PlacedRoom _murderRoom;
+        private ClockTime _murderTime;
+        private VictimPlan _victimPlan;
         private Character _suspect;
         private Character _victim;
         private Motive _motive;
 
-        public LevelAttempt(GeneratorDatabase db, Rng rng, Method forcedMethod)
+        public LevelAttempt(GeneratorDatabase db, GenerationCache cache, Rng rng, Method forcedMethod)
         {
             _db = db;
+            _cache = cache;
             _settings = db.Settings;
             _rng = rng;
             _forcedMethod = forcedMethod;
@@ -56,17 +62,14 @@ namespace FifteenBraincells.MurderGenerator.Generation
             AddMethodClues();
             AddMotiveClues();
 
-            if (!PlanFakeAlibi())
+            if (!AddPlans() || !PlanFakeAlibi() || !ChooseContradiction())
             {
                 return null;
             }
 
+            // Innocent alibis come after the contradiction, so its speaker still has room for that line.
             PlanInnocentAlibis();
-
-            if (!ChooseContradiction())
-            {
-                return null;
-            }
+            AddLooseContradictions();
 
             var redHerrings = _rng.Range(_settings.RedHerringsMin, _settings.RedHerringsMax);
             for (var i = 0; i < redHerrings; i++)
@@ -101,6 +104,13 @@ namespace FifteenBraincells.MurderGenerator.Generation
 
         private static bool CannotWitness(Need blocked) => (blocked & (Need.Sight | Need.Afternoon)) != 0;
 
+        /// <summary>How many lines the character says so far, not counting open speaker slots.</summary>
+        private int FixedLineCount(Character character) => AllClues().Count(c => c.FixedSpeaker == character);
+
+        /// <summary>The character already says as much as anyone may in one level.</summary>
+        private bool IsFull(Character character) =>
+            character != null && FixedLineCount(character) >= _settings.MaxLinesPerCharacter;
+
         /// <summary>Adds a clue and creates a speaker slot when the speaker is still unknown.</summary>
         private DraftClue AddClue(ClueCategory category, string sourceId, LineSpec line, Dictionary<string, TextArg> args,
             ClueEffect effect, LineContext context, IEnumerable<Character> mayNotSpeak = null)
@@ -127,6 +137,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
                 Room = line.Speaker.IsSpoken ? null : ResolveRoom(line.Room, context),
                 Args = args,
                 Effect = effect,
+                About = context.Holder,
             };
 
         /// <summary>The speaker when it is already known from the data and context; null for open slots.</summary>
@@ -163,6 +174,15 @@ namespace FifteenBraincells.MurderGenerator.Generation
 
         private PlacedRoom BedroomOf(Character owner) => new PlacedRoom(_db.GetRoom(RoomRef.Bedroom), owner);
 
+        /// <summary>Where an inside alibi or plan puts its holder. Null for outside alibis.</summary>
+        private PlacedRoom PlaceOf(Alibi alibi, Character holder) =>
+            alibi.IsOutside ? null
+            : alibi.RoomId == RoomRef.Bedroom ? BedroomOf(holder)
+            : new PlacedRoom(_db.GetRoom(alibi.RoomFor(holder)));
+
+        private static bool SameRoom(PlacedRoom a, PlacedRoom b) =>
+            a != null && b != null && a.Room == b.Room && a.Owner == b.Owner;
+
         private static Dictionary<string, TextArg> Args(params (string Name, TextArg Value)[] values) =>
             values.Where(v => v.Value != null).ToDictionary(v => v.Name, v => v.Value);
 
@@ -174,23 +194,30 @@ namespace FifteenBraincells.MurderGenerator.Generation
         {
             var clues = AllClues().Select(ToClue).ToList();
 
-            // Defensive: the steps above guarantee this, but a level with two answers must never leave the generator.
+            // Defensive: the steps above guarantee these, but a level that breaks them must never leave the generator.
             var result = Solver.Solve(clues, Cast);
             if (!result.IsSolved || !result.Remaining[0].Is(_suspect, _victim))
             {
                 return null;
             }
 
-            var solution = new Solution(_method, _murderRoom, _suspect, _victim, _motive, _fakeAlibi.Alibi, _contradiction);
+            if (Cast.Any(c => clues.Count(x => x.Speaker == c) > _settings.MaxLinesPerCharacter))
+            {
+                return null;
+            }
+
+            var solution = new Solution(_method, _murderRoom, _murderTime, _victimPlan, _suspect, _victim, _motive,
+                _fakeAlibi.Alibi, _contradiction);
             var alibis = _plans
                 .Select(p => new AlibiAssignment(p.Holder, p.Alibi, p.Partner, p.IsFake))
                 .ToList();
             var blocked = _blocked.Where(b => b.Value != Need.None).ToDictionary(b => b.Key, b => b.Value);
-            return new Level(seed, attemptNumber, solution, clues, alibis, blocked);
+            var plans = _planHolders.Select(p => new PlanAssignment(p.Key, p.Value, p.Key == _victim)).ToList();
+            return new Level(seed, attemptNumber, solution, clues, alibis, blocked, plans);
         }
 
         private static Clue ToClue(DraftClue draft) =>
             new Clue(draft.Category, draft.SourceId, draft.Line.Form, draft.Speaker, draft.Room, draft.Line.TextKey,
-                draft.Args, draft.Effect);
+                draft.Args, draft.Effect, draft.About, draft.IsFalseLead);
     }
 }
