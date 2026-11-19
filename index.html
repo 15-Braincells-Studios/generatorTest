@@ -119,6 +119,7 @@ td.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono);font-size:13p
     <p>The texts come straight from Excel, with the placeholders filled in. Each card shows the row it came from and what the solver does with it. Untick a card to see what happens when the player misses that clue.</p>
   </div>
   <div class="toolbar"><div class="seg" role="group" aria-label="Method" id="mseg" style="flex-wrap:wrap"></div></div>
+  <div class="toolbar"><div class="seg" role="group" aria-label="Closed rooms" id="rseg" style="flex-wrap:wrap"></div><span class="seed" id="rinfo">All rooms are open.</span></div>
   <div class="toolbar">
     <button class="primary" id="btn-gen">Generate new level</button>
     <button id="btn-all">All found</button>
@@ -145,11 +146,13 @@ td.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono);font-size:13p
 <section>
   <div class="sec-head">
     <div class="eyebrow">3 · Stress test</div>
-    <h2>A thousand levels, and which rows they use</h2>
-    <p>The generator runs a thousand times. The table shows how often each Excel row ended up in a level. A row with 0 was not picked in this run. If the generator can never pick it, the note says why.</p>
+    <h2>Thousands of levels, and which rows they use</h2>
+    <p>The generator runs a few thousand times (pick how many below). Close rooms to see what that does to the variety. The table shows how often each Excel row ended up in a level. A row with 0 was not picked in this run. If the generator can never pick it, the note says why.</p>
   </div>
-  <div class="toolbar"><button class="primary" id="btn-test">Run again</button></div>
+  <div class="toolbar"><div class="seg" role="group" aria-label="Closed rooms" id="rseg2" style="flex-wrap:wrap"></div></div>
+  <div class="toolbar"><select id="tn"><option value="1000">1,000 levels</option><option value="3000" selected>3,000 levels</option><option value="5000">5,000 levels</option></select><button class="primary" id="btn-test">Run again</button><span class="seed">Closed rooms are shared with the level generator above.</span></div>
   <div class="stats" id="stats"></div>
+  <div class="facts" id="bym" style="margin:8px 0"></div>
   <div class="scroll"><table><thead><tr><th>Row</th><th>Levels</th><th style="width:26%"></th><th>Note</th></tr></thead><tbody id="cov"></tbody></table></div>
 </section>
 
@@ -7475,7 +7478,48 @@ const MK=i=>'\u0001'+i+'\u0001';const PAIRS=new Map();
 const W={g1:'chars',mw:1}; // G1: victim, then murderer, then method (weight 1/pairs), then motive (weight 1/fit); G2 on
 // G1/G2: weights. A motive that fits many (murderer, victim) pairs, or an alibi that many characters may have, gets a smaller chance.
 const MOTFIT=new Map(MOT.map(m=>[m,CH.reduce((n,d)=>n+CH.filter(s=>s!==d&&motiveFits(m,d,s)).length,0)]));
-const motW=m=>1/MOTFIT.get(m);const alW=a=>1/Math.max(1,a.elig.length);
+const motW=m=>1/(MOTFIT.get(m)||1);const alW=a=>1/Math.max(1,a.elig.length);
+
+// ================= CLOSED ROOMS =================
+// A closed room is left out of the game completely: no method, alibi, plan, clue, motive, red herring or contradiction
+// that takes place there or mentions it. Only a note on its door says it is closed.
+const ROOMS=[['Armory','armory',/\barmou?r(y|ies)\b/i],['Alchemy room','alchemy room',/\balchemy\b/i],['Study room','study',/\bstudy\b(?!\s+schedule)/i],
+  ['Library','library',/\blibrar(y|ies)\b/i],['Royal bathroom','royal bathroom',/\broyal bathroom\b/i],['Staff bathroom','staff bathroom',/\bstaff bathroom\b/i]];
+let CLOSED=new Set(),CLOSEDINFO={};
+const ORIG={METHODS:[...METHODS],MCLUES:[...MCLUES],MOT:[...MOT],AL:[...AL],RH:[...RH],CS:[...CS],CG:[...CG],PLACEPOOL:[...PLACEPOOL],
+  PLANS:new Map([...PLANS].map(([k,v])=>[k,[...v]])),sC:new Map(METHODS.map(M=>[M.name,M.sC])),alElig:new Map(AL.map(a=>[a,a.elig])),alVar:new Map(AL.map(a=>[a,a.variants]))};
+const BATHWORDS=/\bbath(s|room|rooms|tub|ing|e|ed)?\b|\btubs?\b/i;
+const grpBath=c=>is(c,'Royalty')?'Royal bathroom':'Staff bathroom';
+const textClosed=t=>{t=String(t||'');if(ROOMS.some(([k,,rx])=>CLOSED.has(k)&&rx.test(t)))return true;return CLOSED.has('Royal bathroom')&&CLOSED.has('Staff bathroom')&&BATHWORDS.test(t);};
+const placeClosed=p=>!!p&&CLOSED.has(p);
+const setArr=(a,b)=>{a.length=0;a.push(...b);};
+function applyClosed(){const info={};const off=(k)=>info[k]=(info[k]||0)+1;
+  // alibis
+  const al=[];for(const a of ORIG.AL){a.elig=ORIG.alElig.get(a);a.variants=ORIG.alVar.get(a).filter(v=>!textClosed(v));
+    if(placeClosed(a.place)||!a.variants.length){off('Alibis');continue;}
+    if(/by the character's group/i.test(a.place||'')){a.elig=a.elig.filter(c=>!CLOSED.has(grpBath(c)));if(!a.elig.length){off('Alibis');continue;}}
+    al.push(a);}
+  setArr(AL,al);const alive=new Set(al);
+  // method clues
+  setArr(MCLUES,ORIG.MCLUES.filter(m=>{const ok=!placeClosed(m.Place)&&!textClosed(m.Clue);if(!ok)off('Method Clues');return ok;}));
+  // methods and their victim plans
+  const ms=[];for(const M of ORIG.METHODS){let pl=ORIG.PLANS.get(M.name).filter(p=>{if(p.alibi&&!alive.has(p.alibi))return false;if(p.variants&&p.variants.every(textClosed))return false;return true;})
+      .map(p=>{let el=p.alibi?p.elig.filter(c=>p.alibi.elig.includes(c)):p.elig;
+        if(/Victim's bathroom/i.test(M.placeSpec))el=el.filter(c=>!CLOSED.has(grpBath(c)));
+        return Object.assign({},p,{elig:el});}).filter(p=>p.elig.length);
+    const dropped=ORIG.PLANS.get(M.name).length-pl.length;for(let i=0;i<dropped;i++)off('Victim Plans');
+    PLANS.set(M.name,pl);M.sC=M.kind==='fixed'?ORIG.sC.get(M.name):CH.filter(c=>pl.some(p=>p.elig.includes(c)));
+    if(M.places.every(placeClosed)||!M.sC.length||!MCLUES.some(m=>m.Method===M.name&&m.Group==='A')){off('Methods');continue;}
+    ms.push(M);}
+  setArr(METHODS,ms);
+  setArr(MOT,ORIG.MOT.filter(m=>{const ok=!textClosed(m.clue);if(!ok)off('Motives');return ok;}));
+  setArr(RH,ORIG.RH.filter(h=>{const ok=!textClosed(h.susp)&&!textClosed(h.expl);if(!ok)off('Red Herrings');return ok;}));
+  setArr(CG,ORIG.CG.filter(c=>{const ok=!textClosed(c.clue)&&!placeClosed(c.place);if(!ok)off('Contradictions');return ok;}));
+  setArr(CS,ORIG.CS.filter(c=>{const ok=!textClosed(c.clue)&&!placeClosed(c.place)&&AL.some(a=>a.name===c.tags);if(!ok)off('Contradictions');return ok;}));
+  setArr(PLACEPOOL,ORIG.PLACEPOOL.filter(p=>!placeClosed(p)));
+  PAIRS.clear();CLOSEDINFO=info;}
+function closedNotes(){return [...CLOSED].map((k,i)=>{const nm=ROOMS.find(r=>r[0]===k)[1];
+  return {id:'cl'+i,cat:'Note',form:'Note',place:'Hallway',text:'Note on the '+nm+' door: "The '+nm+' is closed today."',srcName:'Closed room · '+k,eff:{type:'info'}};});}
 function attempt(r,forceMethod){
   const pick=a=>a[Math.floor(r()*a.length)];const wpick=(a,w)=>{const ws=a.map(w);let t=ws.reduce((x,y)=>x+y,0)*r();for(let i=0;i<a.length;i++){t-=ws[i];if(t<=0)return a[i];}return a[a.length-1];};const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   const pairsOf=M=>PAIRS.get(M)||PAIRS.set(M,pairsRaw(M)).get(M);const pairsRaw=M=>{const P=[];for(const d of M.dC)for(const s of M.sC){if(d===s)continue;const ms=MOT.filter(m=>motiveFits(m,d,s));if(ms.length)P.push({d,s,ms});}return P;};
@@ -7695,11 +7739,11 @@ function attempt(r,forceMethod){
   L.silent=NAMES.filter(n=>fin.get(n)===0);if([...fin.values()].some(x=>x>MAXLINES))return null;
   L.blocked=[...blocked.entries()].filter(([n,b])=>b.size).map(([n,b])=>[n,[...b]]);
   Object.assign(L,{d,s,mot,fa,C,M,place,rhs,T,TT,vplan});return L;}
-function generate(seed,force){const r=mulberry32(seed);for(let p=1;p<=60;p++){const L=attempt(r,force);if(L){const res=solve(L);if(res.pairs.length===1&&res.pairs[0].d===L.d.name&&res.pairs[0].s===L.s.name){L.seed=seed;L.tries=p;return L;}}}return null;}
+function generate(seed,force){const r=mulberry32(seed);for(let p=1;p<=60;p++){const L=attempt(r,force);if(L){const res=solve(L);if(res.pairs.length===1&&res.pairs[0].d===L.d.name&&res.pairs[0].s===L.s.name){L.seed=seed;L.tries=p;closedNotes().forEach(c=>L.clues.push(c));return L;}}}return null;}
 
 // ================= UI =================
-const CATS=['Method','Plan','Motive','Alibi','Contradiction','Red herring'];
-const CATN={'Method':'Method clues','Plan':'Plans for tonight','Motive':'Motives','Alibi':'Alibis','Contradiction':'Contradiction','Red herring':'Red herrings'};
+const CATS=['Method','Plan','Motive','Alibi','Contradiction','Red herring','Note'];
+const CATN={'Method':'Method clues','Plan':'Plans for tonight','Motive':'Motives','Alibi':'Alibis','Contradiction':'Contradiction','Red herring':'Red herrings','Note':'Closed rooms'};
 let L=null,on=new Set(),mode=-1,autoRule=false,playMode=true,order=[];
 function logic(c){const e=c.eff;
   if(e.planA)return 'Only the '+e.names.join(', ')+' will be there at that time → the victim';
@@ -7738,14 +7782,21 @@ function renderCast(){const show=document.getElementById('plan')&&document.getEl
     const role=show?(n===L.d.name?'<span class="role d">murderer</span>':n===L.s.name?'<span class="role s">victim</span>':''):'';
     const pl=L.clues.find(c=>c.cat==='Plan'&&c.who===n);const tonight=pl&&!al?'Tonight: plan · '+pl.srcName.split(' · ').pop():al?'Tonight: '+al.srcName.replace('Alibis · ','')+(al.fake&&show?' (fake)':'')+(al.who!==n?' (with the '+al.who+')':''):'Tonight: no alibi';
     return '<div class="person"><h4>'+esc(n)+role+'</h4><div class="tonight">'+esc(tonight)+'</div>'+(mine.length?'<ul>'+mine.map(c=>'<li>'+esc(c.text)+'</li>').join('')+'</ul>':'<div class="none">No line in this level</div>')+'</div>';}).join('');
-  const rooms={};L.clues.filter(c=>!c.speaker).forEach(c=>{const p=((c.cat==='Method'||c.cat==='Contradiction')&&c.place)?c.place:'No place given in Excel';(rooms[p]=rooms[p]||[]).push(c);});
+  const rooms={};L.clues.filter(c=>!c.speaker).forEach(c=>{const p=((c.cat==='Method'||c.cat==='Contradiction'||c.cat==='Note')&&c.place)?c.place:'No place given in Excel';(rooms[p]=rooms[p]||[]).push(c);});
   document.getElementById('rooms').innerHTML=Object.keys(rooms).sort().map(p=>'<div class="person"><h4>'+esc(p)+'</h4><ul>'+rooms[p].map(c=>'<li>'+esc(c.text)+'</li>').join('')+'</ul></div>').join('');}
 function nieuw(seed){seed=seed||Math.floor(Math.random()*1e6)+1;L=generate(seed,mode>=0?METHODS[mode]:null);
   if(!L){document.getElementById('seed').textContent='Seed '+seed+' gave no level. Try again.';return;}
   on=new Set();order=L.clues.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}document.getElementById('seed').textContent='Level #'+seed+' · '+L.M.name+' · '+L.clues.length+' clues';renderClues();renderPanel();renderCast();}
 const seg=document.getElementById('mseg');
-seg.innerHTML='<button data-m="-1" aria-pressed="true">Random method</button>'+METHODS.map((M,i)=>'<button data-m="'+i+'" aria-pressed="false">'+esc(M.name)+'</button>').join('');
-seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{mode=+b.dataset.m;seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));nieuw();});
+function renderMethods(){mode=-1;seg.innerHTML='<button data-m="-1" aria-pressed="true">Random method</button>'+METHODS.map((M,i)=>'<button data-m="'+i+'" aria-pressed="false">'+esc(M.name)+'</button>').join('');
+  seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{mode=+b.dataset.m;seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));nieuw();});}
+renderMethods();
+const TOGGLES=[['Armory',['Armory']],['Alchemy room',['Alchemy room']],['Study room',['Study room']],['Library',['Library']],['Bathrooms',['Royal bathroom','Staff bathroom']]];
+function renderRooms(){const html='<span class="lbl" style="align-self:center;margin-right:6px">Closed rooms:</span>'+TOGGLES.map(([k,rs])=>'<button data-r="'+esc(k)+'" aria-pressed="'+rs.every(x=>CLOSED.has(x))+'">'+esc(k)+'</button>').join('');
+  ['rseg','rseg2'].forEach(id=>{const el=document.getElementById(id);if(!el)return;el.innerHTML=html;
+    el.querySelectorAll('button').forEach(b=>b.onclick=()=>{const rs=TOGGLES.find(t=>t[0]===b.dataset.r)[1];const shut=rs.every(x=>CLOSED.has(x));rs.forEach(x=>shut?CLOSED.delete(x):CLOSED.add(x));applyClosed();renderRooms();renderMethods();nieuw();
+      const info=Object.entries(CLOSEDINFO).map(([k,n])=>n+' '+k.toLowerCase()).join(', ');document.getElementById('rinfo').textContent=CLOSED.size?'Switched off: '+(info||'nothing'):'All rooms are open.';});});}
+renderRooms();
 document.getElementById('btn-gen').onclick=()=>nieuw();
 document.getElementById('btn-all').onclick=()=>{on=new Set(L.clues.map(c=>c.id));renderClues();renderPanel();};
 document.getElementById('btn-none').onclick=()=>{on=new Set();renderClues();renderPanel();};
@@ -7759,13 +7810,13 @@ function rowsList(){const R=[];
     return {key:'Contradictions · alibi specific · '+c.name,label:c.name+' (alibi specific: '+c.tags+')',why:!a?'No alibi with this exact name':can?'':'This alibi belongs to someone who cannot be the murderer with the current methods'};}))]);
   R.push(['Red Herrings',RH.map(h=>({key:'Red Herrings · '+h.name,label:h.name,why:''}))]);return R;}
 function test(){const t0=performance.now();let ok=0,sil=0;const plots=new Set(),lv=new Set(),use={},byM={};const base=Math.floor(Math.random()*1e6);
-  for(let i=0;i<1000;i++){const x=generate(base+i,mode>=0?METHODS[mode]:null);if(!x)continue;ok++;if(x.silent.length)sil++;byM[x.M.name]=(byM[x.M.name]||0)+1;plots.add(x.M.name+x.d.name+x.s.name+x.mot.name);lv.add(x.clues.map(c=>c.text).sort().join('|'));
+  const N=+((document.getElementById('tn')||{}).value||1000);for(let i=0;i<N;i++){const x=generate(base+i,mode>=0?METHODS[mode]:null);if(!x)continue;ok++;if(x.silent.length)sil++;byM[x.M.name]=(byM[x.M.name]||0)+1;plots.add(x.M.name+x.d.name+x.s.name+x.mot.name);lv.add(x.clues.map(c=>c.text).sort().join('|'));
     new Set(x.clues.map(c=>c.srcName)).forEach(k=>use[k]=(use[k]||0)+1);}
   const ms=Math.round(performance.now()-t0);const stat=(n,t)=>'<div class="stat"><div class="n">'+n+'</div><div class="t">'+t+'</div></div>';
-  document.getElementById('stats').innerHTML=stat(ok+'/1000','levels approved by the solver')+stat(plots.size,'different plots (method, murderer, victim, motive)')+stat(lv.size,'unique sets of clues')+stat((ok-sil)+'/'+ok,'levels where every character speaks')+stat(ms+' ms','run time');
+  document.getElementById('stats').innerHTML=stat(ok+'/'+N,'levels approved by the solver')+stat(METHODS.length+'/'+ORIG.METHODS.length,'methods available'+(CLOSED.size?' (closed: '+[...CLOSED].join(', ')+')':''))+stat(plots.size,'different plots (method, murderer, victim, motive)')+stat(lv.size,'unique sets of clues')+stat((ok-sil)+'/'+ok,'levels where every character speaks')+stat(ms+' ms','run time');
   document.getElementById('cov').innerHTML=rowsList().map(([sheet,rows])=>'<tr class="sheet"><td colspan="4">'+esc(sheet)+'</td></tr>'+rows.map(r=>{const n=use[r.key]||0;
-    return '<tr><td>'+esc(r.label)+'</td><td class="num'+(n?'':' zero')+'">'+n+'</td><td><div class="bar" style="width:'+(n?Math.max(2,n/10):0)+'%;'+(n?'':'background:transparent')+'"></div></td><td>'+esc(n?r.why:(r.why||(mode>=0?'Not used with this method':'Not picked in this run')))+'</td></tr>';}).join('')).join('');
-  return {ok,sil,use};}
+    return '<tr><td>'+esc(r.label)+'</td><td class="num'+(n?'':' zero')+'">'+n+'</td><td><div class="bar" style="width:'+(n?Math.max(2,n/(N/100)):0)+'%;'+(n?'':'background:transparent')+'"></div></td><td>'+esc(n?r.why:(r.why||(mode>=0?'Not used with this method':'Not picked in this run')))+'</td></tr>';}).join('')).join('');
+  document.getElementById('bym').innerHTML=ORIG.METHODS.map(M=>'<span class="fact"><b>'+(byM[M.name]||0)+'</b> '+esc(M.name)+'</span>').join('');return {ok,sil,use};}
 document.getElementById('btn-test').onclick=test;
 const count=k=>DATA[k].length;
 document.getElementById('facts').innerHTML=[[CH.length,'characters'],[count('methods'),'methods'],[count('methodClues'),'method clues'],[count('motives'),'motives'],[count('alibis'),'alibis'],[count('contraGeneral')+count('contraSpecific'),'contradictions'],[count('herrings'),'red herrings'],[count('victimPlans'),'victim plans']].map(([n,t])=>'<span class="fact"><b>'+n+'</b> '+t+'</span>').join('');
