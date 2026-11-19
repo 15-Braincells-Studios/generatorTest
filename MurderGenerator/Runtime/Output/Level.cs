@@ -113,6 +113,25 @@ namespace FifteenBraincells.MurderGenerator.Output
         public IEnumerable<Clue> LinesOf(Character character) =>
             Clues.Where(c => c.Speaker == character).OrderBy(c => c.IsAboutSpeaker ? 0 : 1);
 
+        /// <summary>
+        /// The five correct pieces of evidence, in the order of <see cref="EvidenceRole"/>: the group A method clue,
+        /// the group B method clue, the murderer's fake alibi, the contradiction that breaks it, and the motive.
+        /// </summary>
+        public IReadOnlyList<Clue> Evidence => Clues.Where(c => c.IsEvidence).OrderBy(c => (int)c.Evidence).ToList();
+
+        /// <summary>The clue that is this piece of evidence.</summary>
+        public Clue EvidenceFor(EvidenceRole role) => Clues.Single(c => c.Evidence == role);
+
+        /// <summary>
+        /// Whether the player handed in exactly the right evidence: all five correct clues and nothing else.
+        /// The order does not matter. Pass the <see cref="Clue"/> objects from <see cref="Clues"/>.
+        /// </summary>
+        public bool IsCorrectEvidence(IEnumerable<Clue> handedIn)
+        {
+            var given = new HashSet<Clue>(handedIn ?? Enumerable.Empty<Clue>());
+            return given.Count == Evidence.Count && given.SetEquals(Evidence);
+        }
+
         /// <summary>The objects lying in a room.</summary>
         public IEnumerable<Clue> ObjectsIn(string roomId) => Clues.Where(c => c.Room != null && c.Room.Room.Id == roomId);
     }

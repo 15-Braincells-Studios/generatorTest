@@ -57,6 +57,29 @@ foreach (var line in level.LinesOf(database.GetCharacter("chef")))
 bool solved = Solver.Solve(foundClues, database.Characters).IsSolved;   // has the player got enough?
 ```
 
+### Evidence
+
+When the player solves a case, they name the murderer and the victim and hand in five pieces of evidence. In every
+level exactly five clues are the right evidence. `Clue.Evidence` says which one a clue is (`EvidenceRole.None` for
+all others):
+
+| `EvidenceRole` | The clue |
+|---|---|
+| `WhenAndWhere` | the method clue of group A |
+| `Method` | the method clue of group B |
+| `FakeAlibi` | the murderer's fake alibi |
+| `Contradiction` | the contradiction that breaks that fake alibi (never a loose false lead) |
+| `Motive` | the murderer's real motive against the victim (never a false lead) |
+
+```csharp
+IReadOnlyList<Clue> right = level.Evidence;              // the five, in the order above
+bool ok = level.IsCorrectEvidence(playerSelection);      // exactly these five, in any order, nothing else
+Clue motive = level.EvidenceFor(EvidenceRole.Motive);
+```
+
+Groups A and B are always shown in every level (whatever the Excel chance says), because they are evidence.
+`LevelReport` marks the five with `EVIDENCE`.
+
 ### Closed rooms
 
 Some rooms can be closed for a level: the armory, the alchemy room, the study, the library and the bathrooms
@@ -200,7 +223,7 @@ Two things are still English-only and are kept in one place, `ClueTextRenderer`:
 
 ## Verification
 
-All 31 tests pass, including the closed-room tests: every closable room on its own and all of them at once,
+All 32 tests pass, including the closed-room tests: every closable room on its own and all of them at once,
 150 levels each, without a single clue, alibi, argument or murder in a closed room. There are also two
 standalone checks:
 - **Stress test:** 10,000 random seeds give 0 failures. A level takes 1.04 attempts on average and about

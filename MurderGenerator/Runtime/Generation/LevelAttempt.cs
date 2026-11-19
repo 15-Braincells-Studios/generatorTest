@@ -65,6 +65,12 @@ namespace FifteenBraincells.MurderGenerator.Generation
             AddMethodClues();
             AddMotiveClues();
 
+            // Groups A and B are evidence, so every level needs one clue of each.
+            if (!_clues.Any(c => c.Evidence == EvidenceRole.WhenAndWhere) || !_clues.Any(c => c.Evidence == EvidenceRole.Method))
+            {
+                return null;
+            }
+
             if (!AddPlans() || !PlanFakeAlibi() || !ChooseContradiction())
             {
                 return null;
@@ -220,6 +226,13 @@ namespace FifteenBraincells.MurderGenerator.Generation
                 return null;
             }
 
+            // Exactly one clue for each of the five pieces of evidence.
+            var roles = clues.Where(c => c.IsEvidence).Select(c => c.Evidence).ToList();
+            if (roles.Count != 5 || roles.Distinct().Count() != 5)
+            {
+                return null;
+            }
+
             var solution = new Solution(_method, _murderRoom, _murderTime, _victimPlan, _suspect, _victim, _motive,
                 _fakeAlibi.Alibi, _contradiction);
             var alibis = _plans
@@ -232,6 +245,6 @@ namespace FifteenBraincells.MurderGenerator.Generation
 
         private static Clue ToClue(DraftClue draft) =>
             new Clue(draft.Category, draft.SourceId, draft.Line.Form, draft.Speaker, draft.Room, draft.Line.TextKey,
-                draft.Args, draft.Effect, draft.About, draft.IsFalseLead);
+                draft.Args, draft.Effect, draft.About, draft.IsFalseLead, draft.Evidence);
     }
 }

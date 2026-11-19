@@ -280,7 +280,9 @@ namespace FifteenBraincells.MurderGenerator.Generation
                 ? ClueEffect.FakeAlibi(plan.Holder)
                 : ClueEffect.Alibi(plan.Partner == null ? new[] { plan.Holder } : new[] { plan.Holder, plan.Partner });
             var context = new LineContext { Holder = plan.Holder, Partner = plan.Partner };
-            return CreateClue(ClueCategory.Alibi, alibi.Id, plan.Variant.Line, args, effect, context);
+            var clue = CreateClue(ClueCategory.Alibi, alibi.Id, plan.Variant.Line, args, effect, context);
+            clue.Evidence = plan.IsFake ? EvidenceRole.FakeAlibi : EvidenceRole.None;
+            return clue;
         }
     }
 }

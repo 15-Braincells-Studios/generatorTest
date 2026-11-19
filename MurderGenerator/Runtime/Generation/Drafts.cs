@@ -61,6 +61,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
         public ClueEffect Effect;
         public Character About;
         public bool IsFalseLead;
+        public EvidenceRole Evidence;
 
         public Character Speaker => FixedSpeaker ?? Slot?.Assigned;
     }

@@ -89,6 +89,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
             var clue = AddClue(ClueCategory.Contradiction, _contradiction.Id, _contradiction.Line, args,
                 ClueEffect.BreaksFakeAlibi(_suspect), context, mayNotSpeak: new[] { _suspect });
             clue.About = null;
+            clue.Evidence = EvidenceRole.Contradiction;
         }
 
         // ------------------------------------------------------------------ loose contradictions

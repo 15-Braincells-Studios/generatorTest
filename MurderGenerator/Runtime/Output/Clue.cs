@@ -18,6 +18,26 @@ namespace FifteenBraincells.MurderGenerator.Output
     }
 
     /// <summary>
+    /// The five clues the player must hand in as evidence when solving a level. Every level has exactly one clue
+    /// of each kind; every other clue is <see cref="None"/>.
+    /// </summary>
+    public enum EvidenceRole
+    {
+        /// <summary>Not part of the evidence.</summary>
+        None,
+        /// <summary>The method clue of group A: when and where the murder happens.</summary>
+        WhenAndWhere,
+        /// <summary>The method clue of group B: which method is used.</summary>
+        Method,
+        /// <summary>The murderer's fake alibi.</summary>
+        FakeAlibi,
+        /// <summary>The contradiction that breaks the fake alibi.</summary>
+        Contradiction,
+        /// <summary>The murderer's real motive against the victim.</summary>
+        Motive,
+    }
+
+    /// <summary>
     /// One clue in a level: a line a character says, or something lying in a room.
     /// The text is not finished yet: <see cref="Text.ClueTextRenderer"/> turns it into a string for a language.
     /// </summary>
@@ -28,8 +48,9 @@ namespace FifteenBraincells.MurderGenerator.Output
 
         internal Clue(ClueCategory category, string sourceId, ClueForm form, Character speaker, PlacedRoom room,
             string textKey, IReadOnlyDictionary<string, TextArg> args, ClueEffect effect, Character about = null,
-            bool isFalseLead = false)
+            bool isFalseLead = false, EvidenceRole evidence = EvidenceRole.None)
         {
+            Evidence = evidence;
             About = about;
             IsFalseLead = isFalseLead;
             Category = category;
@@ -72,6 +93,12 @@ namespace FifteenBraincells.MurderGenerator.Output
 
         /// <summary>A loose contradiction about an alibi nobody has: it refutes nothing.</summary>
         public bool IsFalseLead { get; }
+
+        /// <summary>Which of the five pieces of evidence this clue is, or <see cref="EvidenceRole.None"/>.</summary>
+        public EvidenceRole Evidence { get; }
+
+        /// <summary>The player must hand this clue in as evidence.</summary>
+        public bool IsEvidence => Evidence != EvidenceRole.None;
 
         public override string ToString() => $"{Category} {SourceId}";
     }

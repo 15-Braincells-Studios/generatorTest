@@ -382,6 +382,46 @@ namespace FifteenBraincells.MurderGenerator.Tests
             Assert.IsEmpty(problems);
         }
 
+        [Test]
+        public void EveryLevelHasTheFiveRightPiecesOfEvidence()
+        {
+            var problems = Check(level =>
+            {
+                var s = level.Solution;
+                var evidence = level.Evidence;
+                if (evidence.Count != 5 || evidence.Select(c => c.Evidence).Distinct().Count() != 5)
+                {
+                    return $"{evidence.Count} pieces of evidence";
+                }
+
+                var a = level.EvidenceFor(EvidenceRole.WhenAndWhere);
+                var b = level.EvidenceFor(EvidenceRole.Method);
+                var fake = level.EvidenceFor(EvidenceRole.FakeAlibi);
+                var breaks = level.EvidenceFor(EvidenceRole.Contradiction);
+                var motive = level.EvidenceFor(EvidenceRole.Motive);
+                if (a.Category != ClueCategory.Method || Db.MethodClues.Single(m => m.Id == a.SourceId).Group != ClueGroup.WhenAndWhere)
+                    return $"A evidence is {a}";
+                if (b.Category != ClueCategory.Method || Db.MethodClues.Single(m => m.Id == b.SourceId).Group != ClueGroup.Method)
+                    return $"B evidence is {b}";
+                if (fake.Effect.Kind != ClueEffectKind.FakeAlibi || fake.SourceId != s.FakeAlibi.Id || fake.About != s.Suspect)
+                    return $"fake alibi evidence is {fake}";
+                if (breaks.Effect.Kind != ClueEffectKind.BreaksFakeAlibi || breaks.SourceId != s.Contradiction.Id || breaks.IsFalseLead)
+                    return $"contradiction evidence is {breaks}";
+                if (motive.Effect.Kind != ClueEffectKind.Motive || motive.SourceId != s.Motive.Id
+                    || motive.Effect.MotiveSuspect != s.Suspect || motive.Effect.MotiveVictim != s.Victim)
+                    return $"motive evidence is {motive}";
+                if (!level.IsCorrectEvidence(evidence.Reverse()))
+                    return "the five in another order are not accepted";
+                if (level.IsCorrectEvidence(evidence.Take(4)))
+                    return "four pieces are accepted";
+                var other = level.Clues.First(c => !c.IsEvidence);
+                if (level.IsCorrectEvidence(evidence.Take(4).Append(other)) || level.IsCorrectEvidence(evidence.Append(other)))
+                    return "a wrong clue is accepted";
+                return null;
+            });
+            Assert.IsEmpty(problems);
+        }
+
         // ------------------------------------------------------------------ alibis and contradictions
 
         [Test]

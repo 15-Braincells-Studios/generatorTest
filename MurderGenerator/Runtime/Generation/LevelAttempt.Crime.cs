@@ -103,7 +103,9 @@ namespace FifteenBraincells.MurderGenerator.Generation
         {
             foreach (var rule in _db.ClueGroups)
             {
-                if (!_rng.Chance(rule.ShowChance))
+                // Groups A and B are part of the evidence, so they are always shown.
+                var isEvidence = rule.Group == ClueGroup.WhenAndWhere || rule.Group == ClueGroup.Method;
+                if (!isEvidence && !_rng.Chance(rule.ShowChance))
                 {
                     continue;
                 }
@@ -215,8 +217,11 @@ namespace FifteenBraincells.MurderGenerator.Generation
             }
 
             // An unnamed witness is never the suspect or the victim.
-            AddClue(ClueCategory.Method, clue.Id, clue.Line, args, effect, new LineContext { Suspect = _suspect, Victim = _victim },
+            var draft = AddClue(ClueCategory.Method, clue.Id, clue.Line, args, effect, new LineContext { Suspect = _suspect, Victim = _victim },
                 mayNotSpeak: new[] { _suspect, _victim });
+            draft.Evidence = clue.Group == ClueGroup.WhenAndWhere ? EvidenceRole.WhenAndWhere
+                : clue.Group == ClueGroup.Method ? EvidenceRole.Method
+                : EvidenceRole.None;
         }
 
         private Character Truth(CrimeRole role) => role == CrimeRole.Suspect ? _suspect : _victim;
@@ -245,7 +250,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
         /// <summary>Adds the real motive and one or two false leads between other characters.</summary>
         private void AddMotiveClues()
         {
-            AddMotiveClue(_motive, _suspect, _victim);
+            AddMotiveClue(_motive, _suspect, _victim).Evidence = EvidenceRole.Motive;
 
             var falseLeads = _rng.Range(_settings.FalseMotivesMin, _settings.FalseMotivesMax);
             var usedMotives = new HashSet<Motive> { _motive };
@@ -281,11 +286,11 @@ namespace FifteenBraincells.MurderGenerator.Generation
                 o => _cache.MotiveWeight(o.Motive));
         }
 
-        private void AddMotiveClue(Motive motive, Character suspect, Character victim)
+        private DraftClue AddMotiveClue(Motive motive, Character suspect, Character victim)
         {
             var context = new LineContext { Suspect = suspect, Victim = victim };
             var args = Args(("suspect", Arg(suspect)), ("victim", Arg(victim)));
-            AddClue(ClueCategory.Motive, motive.Id, motive.Clue, args, ClueEffect.Motive(suspect, victim), context,
+            return AddClue(ClueCategory.Motive, motive.Id, motive.Clue, args, ClueEffect.Motive(suspect, victim), context,
                 mayNotSpeak: new[] { suspect, victim });
         }
     }
