@@ -315,7 +315,7 @@
   {"group": "motive", "key": "motive_fired", "value": "Order signed by {victim}: \"{suspect} is fired tomorrow.\""},
   {"group": "motive", "key": "motive_humiliation", "value": "{victim} mocked {suspect} in front of the whole court this morning."},
   {"group": "motive", "key": "motive_arranged_marriage", "value": "Marriage contract signed by {victim}: {suspect} must marry a foreign noble next month."},
-  {"group": "motive", "key": "motive_unpaid_wages", "value": "Letter from {suspect} to {victim}: \"A whole year without pay. This is my last warning.\""},
+  {"group": "motive", "key": "motive_unpaid_wages", "value": "Letter from {suspect} to {victim}: \"You haven't paid me for the past six months. This is my last warning.\""},
   {"group": "motive", "key": "motive_losing_their_job_to_someone", "value": "Order: \"{suspect} has failed for the last time. From tomorrow, {victim} takes over all their duties.\""},
   {"group": "motive", "key": "motive_disinherited", "value": "Draft of {victim}'s will: \"{suspect} receives nothing.\""},
   {"group": "motive", "key": "motive_forbidden_experiments", "value": "Royal decree signed by {victim}: \"All experiments in the infirmary are forbidden. If caught, {suspect} will be banished.\""},
