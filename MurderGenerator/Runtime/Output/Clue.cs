@@ -13,6 +13,8 @@ namespace FifteenBraincells.MurderGenerator.Output
         RedHerring,
         /// <summary>What the victim (or a decoy) does tonight. Not an alibi.</summary>
         Plan,
+        /// <summary>The note on the door of a closed room. Proves nothing.</summary>
+        ClosedRoom,
     }
 
     /// <summary>
@@ -21,6 +23,9 @@ namespace FifteenBraincells.MurderGenerator.Output
     /// </summary>
     public sealed class Clue
     {
+        /// <summary>String key of the note on the door of a closed room ("Closed today.").</summary>
+        public const string ClosedRoomNoteKey = "closed_room_note";
+
         internal Clue(ClueCategory category, string sourceId, ClueForm form, Character speaker, PlacedRoom room,
             string textKey, IReadOnlyDictionary<string, TextArg> args, ClueEffect effect, Character about = null,
             bool isFalseLead = false)

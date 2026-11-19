@@ -45,6 +45,7 @@ namespace FifteenBraincells.MurderGenerator.Tests
                     Text.ClueTextRenderer.ListSeparatorKey,
                     Text.ClueTextRenderer.ListLastSeparatorKey,
                     Text.ClueTextRenderer.FirstPersonObjectKey,
+                    Output.Clue.ClosedRoomNoteKey,
                 })
                 .ToHashSet();
             Assert.AreEqual(used.Count(k => k.Length > 0), TestData.Strings.Count, "string table size differs from used keys");

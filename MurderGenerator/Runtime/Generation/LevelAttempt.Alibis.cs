@@ -195,6 +195,11 @@ namespace FifteenBraincells.MurderGenerator.Generation
 
         private bool IsVariantAllowed(AlibiVariant variant, Character holder, Character partner, bool isFake)
         {
+            if (!_db.IsOpen(variant))
+            {
+                return false; // lies in or talks about a closed room
+            }
+
             if (variant.HolderTag.Length > 0 && !holder.HasTag(variant.HolderTag))
             {
                 return false;

@@ -107,6 +107,12 @@ namespace FifteenBraincells.MurderGenerator.Data
 
         /// <summary>The suspect needs all of these tags (a note in their handwriting needs "writes").</summary>
         public IReadOnlyList<string> SuspectHasTags { get; internal set; }
+
+        /// <summary>"(excluded)" never names someone who is already on a "(partial list)" in the level.</summary>
+        public bool ExcludedNotOnPartialList { get; internal set; }
+
+        /// <summary>Closable rooms the clue takes place in or talks about. Left out when one of them is closed.</summary>
+        public IReadOnlyList<string> MentionedRooms { get; internal set; }
     }
 
     public sealed class Motive
@@ -121,6 +127,9 @@ namespace FifteenBraincells.MurderGenerator.Data
         public string NotBothTag { get; internal set; }
 
         public LineSpec Clue { get; internal set; }
+
+        /// <summary>Closable rooms the text talks about.</summary>
+        public IReadOnlyList<string> MentionedRooms { get; internal set; }
 
         public bool Fits(Character suspect, Character victim) =>
             suspect != victim
@@ -153,6 +162,9 @@ namespace FifteenBraincells.MurderGenerator.Data
 
         /// <summary>The holder needs this tag for this variant (e.g. a note on their own bedroom door). Empty: no rule.</summary>
         public string HolderTag { get; internal set; }
+
+        /// <summary>Closable rooms the text talks about.</summary>
+        public IReadOnlyList<string> MentionedRooms { get; internal set; }
     }
 
     public sealed class Alibi
@@ -243,6 +255,9 @@ namespace FifteenBraincells.MurderGenerator.Data
 
         /// <summary>Nobody else has an alibi in any bathroom.</summary>
         public bool NoOtherAlibiInBathroom { get; internal set; }
+
+        /// <summary>Never for an outside fake alibi (the text needs a room).</summary>
+        public bool NotForOutsideAlibis { get; internal set; }
     }
 
     public sealed class Contradiction
@@ -262,6 +277,9 @@ namespace FifteenBraincells.MurderGenerator.Data
 
         /// <summary>The text names the suspect or partner, so it can never be a loose false lead.</summary>
         public bool MentionsSuspect { get; internal set; }
+
+        /// <summary>Closable rooms the contradiction takes place in or talks about.</summary>
+        public IReadOnlyList<string> MentionedRooms { get; internal set; }
     }
 
     /// <summary>
@@ -291,6 +309,9 @@ namespace FifteenBraincells.MurderGenerator.Data
         /// <summary>The plan's own line. Null for alibi plans.</summary>
         public LineSpec Line { get; internal set; }
 
+        /// <summary>Closable rooms the plan's own line talks about.</summary>
+        public IReadOnlyList<string> MentionedRooms { get; internal set; }
+
         /// <summary>When the plan starts: its own time, or the alibi's start.</summary>
         public ClockTime StartTime => Time ?? Alibi.Start;
 
@@ -316,5 +337,8 @@ namespace FifteenBraincells.MurderGenerator.Data
         public Need Needs { get; internal set; }
         public HerringLine Suspicion { get; internal set; }
         public HerringLine Explanation { get; internal set; }
+
+        /// <summary>Closable rooms the suspicion or explanation talks about.</summary>
+        public IReadOnlyList<string> MentionedRooms { get; internal set; }
     }
 }

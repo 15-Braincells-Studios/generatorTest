@@ -26,8 +26,12 @@ namespace FifteenBraincells.MurderGenerator.Data
             IReadOnlyList<Alibi> alibis,
             IReadOnlyList<Contradiction> contradictions,
             IReadOnlyList<RedHerring> redHerrings,
-            IReadOnlyList<VictimPlan> victimPlans)
+            IReadOnlyList<VictimPlan> victimPlans,
+            IReadOnlyList<IReadOnlyList<string>> closableRooms,
+            IReadOnlyCollection<string> closedRoomIds = null)
         {
+            ClosableRooms = closableRooms;
+            ClosedRoomIds = closedRoomIds ?? new string[0];
             Settings = settings;
             Characters = characters;
             Rooms = rooms;
@@ -60,6 +64,31 @@ namespace FifteenBraincells.MurderGenerator.Data
         public IReadOnlyList<Contradiction> Contradictions { get; }
         public IReadOnlyList<RedHerring> RedHerrings { get; }
         public IReadOnlyList<VictimPlan> VictimPlans { get; }
+
+        /// <summary>
+        /// The rooms that may be closed for a level. Rooms in one entry are always closed together (the two
+        /// bathrooms). See <see cref="WithClosedRooms"/>.
+        /// </summary>
+        public IReadOnlyList<IReadOnlyList<string>> ClosableRooms { get; }
+
+        /// <summary>The rooms that are closed in this database. Empty for the full database.</summary>
+        public IReadOnlyCollection<string> ClosedRoomIds { get; }
+
+        public bool IsClosed(string roomId) => ClosedRoomFilter.IsRoomClosed(ClosedRoomIds.ToList(), roomId);
+
+        /// <summary>Whether an alibi line can be used: it does not lie in or talk about a closed room.</summary>
+        public bool IsOpen(AlibiVariant variant) =>
+            ClosedRoomIds.Count == 0
+            || (!IsClosed(variant.Line.Room.RoomId) && !variant.MentionedRooms.Any(ClosedRoomIds.Contains));
+
+        /// <summary>
+        /// A copy of this database with some rooms closed. A closed room is left out of the game completely:
+        /// no method, alibi, plan, clue, motive, red herring or contradiction takes place there or talks about it.
+        /// Each generated level gets a note on the door of every closed room. Rooms that belong together
+        /// (both bathrooms) are closed together. Build one <see cref="Generation.LevelGenerator"/> per choice of rooms.
+        /// </summary>
+        /// <param name="roomIds">Ids from <see cref="ClosableRooms"/>, e.g. "armory" or "royal_bathroom".</param>
+        public GeneratorDatabase WithClosedRooms(IEnumerable<string> roomIds) => ClosedRoomFilter.Apply(this, roomIds);
 
         /// <summary>The plans a victim (or decoy) can have with this method. Empty for Fixed methods.</summary>
         public IReadOnlyList<VictimPlan> GetPlans(Method method) =>

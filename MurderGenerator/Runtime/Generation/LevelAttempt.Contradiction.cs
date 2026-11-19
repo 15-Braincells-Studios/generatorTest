@@ -65,6 +65,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
                    && (rules.OnlyForAlibis.Count == 0 || rules.OnlyForAlibis.Contains(fake))
                    && !rules.NotForAlibis.Contains(fake)
                    && !rules.NotWithMethods.Contains(_method)
+                   && !(rules.NotForOutsideAlibis && fake.IsOutside)
                    && (contradiction.Line.Speaker.Kind != SpeakerKind.Partner || _fakeAlibi.Partner != null);
         }
 
@@ -73,7 +74,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
             var fake = _fakeAlibi.Alibi;
             var alibiRoom = AlibiRoom(_fakeAlibi);
             var otherRooms = _db.Rooms
-                .Where(r => r.Id != RoomRef.Bedroom && r.Id != _murderRoom.Room.Id && r.Id != alibiRoom?.Room.Id)
+                .Where(r => r.Id != RoomRef.Bedroom && r.Id != _murderRoom.Room.Id && r.Id != alibiRoom?.Room.Id && !_db.IsClosed(r.Id))
                 .ToList();
 
             var args = Args(

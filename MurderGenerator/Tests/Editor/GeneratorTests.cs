@@ -353,6 +353,35 @@ namespace FifteenBraincells.MurderGenerator.Tests
             Assert.IsEmpty(problems);
         }
 
+        [Test]
+        public void ExcludedIsNeverOnAPartialListWhenTheClueSaysSo()
+        {
+            var problems = Check(level =>
+            {
+                var listed = level.Clues.SelectMany(c => c.Args).Where(a => a.Key == "partial_list")
+                    .SelectMany(a => ((CharacterListArg)a.Value).Characters).ToHashSet();
+                var clash = level.Clues
+                    .Where(c => c.Category == ClueCategory.Method && Db.MethodClues.Single(m => m.Id == c.SourceId).ExcludedNotOnPartialList)
+                    .SelectMany(c => c.Args.Where(a => a.Key == "excluded").SelectMany(a => ((CharacterListArg)a.Value).Characters))
+                    .FirstOrDefault(listed.Contains);
+                return clash == null ? null : $"{clash.Id} is excluded and on a partial list";
+            });
+            Assert.IsEmpty(problems);
+        }
+
+        [Test]
+        public void PlanMethodsHappenWhenThePlanStarts()
+        {
+            var problems = Check(level =>
+            {
+                var s = level.Solution;
+                return s.Method.Kind == MethodKind.Plan && s.MurderTime.Minutes != s.VictimPlan.StartTime.Minutes
+                    ? $"murder at {s.MurderTime}, plan {s.VictimPlan.Id} starts at {s.VictimPlan.StartTime}"
+                    : null;
+            });
+            Assert.IsEmpty(problems);
+        }
+
         // ------------------------------------------------------------------ alibis and contradictions
 
         [Test]

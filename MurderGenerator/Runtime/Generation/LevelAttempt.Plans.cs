@@ -67,7 +67,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
 
             // An alibi used as a plan: one of its own lines, preferably told by the holder.
             var variants = plan.Alibi.Variants
-                .Where(v => (v.HolderTag.Length == 0 || holder.HasTag(v.HolderTag))
+                .Where(v => _db.IsOpen(v) && (v.HolderTag.Length == 0 || holder.HasTag(v.HolderTag))
                             && v.Line.Speaker.Kind != SpeakerKind.Partner
                             && !(v.Line.Speaker.Kind == SpeakerKind.Fixed && v.Line.Speaker.Character == holder)
                             && !IsFull(FixedSpeaker(v.Line.Speaker, context)))

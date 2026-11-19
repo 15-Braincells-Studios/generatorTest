@@ -57,6 +57,26 @@ foreach (var line in level.LinesOf(database.GetCharacter("chef")))
 bool solved = Solver.Solve(foundClues, database.Characters).IsSolved;   // has the player got enough?
 ```
 
+### Closed rooms
+
+Some rooms can be closed for a level: the armory, the alchemy room, the study, the library and the bathrooms
+(both bathrooms always close together). `database.ClosableRooms` lists them.
+
+```csharp
+var closed = database.WithClosedRooms(new[] { "armory", "library" });  // a filtered copy, build it once per choice
+Level level = new LevelGenerator(closed).Generate(seed: 2611);
+```
+
+A closed room is left out of the game completely. No method, alibi, plan, clue, motive, red herring or
+contradiction takes place there or talks about it, and it is never filled in as a place in a text. A method that
+needs the room disappears: the heavy book (library), the study fire (study), and the drowning (bathrooms). Each
+level gets one clue of category `ClosedRoom` per closed room: a note on its door (`closed_room_note`, "Closed
+today."). It proves nothing. Things a character keeps in a closed home room (the Weapons master's armory, the
+Librarian's library) lie in the staff room instead.
+
+The converter marks every row with the closable rooms it takes place in or talks about (`mentions`); a plain "bath"
+or "tub" counts as both bathrooms.
+
 ## How a level is built
 
 `LevelGenerator` runs `LevelAttempt` until an attempt succeeds. With the current data, 99% of levels
@@ -76,7 +96,7 @@ succeed on the first attempt. Each step is in its own file:
 | Kind | Time | Murder room |
 |---|---|---|
 | `Fixed` | A random time in the method's window, in steps of 5 minutes | From the method |
-| `Plan` | When the victim's plan starts | From the method (`victim_bathroom`: the royal bathroom for Royalty, the staff bathroom for Staff) |
+| `Plan` | When the victim's plan starts (an alibi used as a plan: its From time) | From the method (`victim_bathroom`: the royal bathroom for Royalty, the staff bathroom for Staff) |
 | `Solo` | A random time inside the victim's solo alibi, at least 30 minutes from its start and end | That alibi's room |
 | `Sleep` | 15 to 30 minutes after the victim's bedtime, at most 20:00 | The victim's bedroom, or the infirmary with the plan Sick |
 
@@ -180,11 +200,13 @@ Two things are still English-only and are kept in one place, `ClueTextRenderer`:
 
 ## Verification
 
-All 25 tests pass. There are also two standalone checks:
+All 31 tests pass, including the closed-room tests: every closable room on its own and all of them at once,
+150 levels each, without a single clue, alibi, argument or murder in a closed room. There are also two
+standalone checks:
 - **Stress test:** 10,000 random seeds give 0 failures. A level takes 1.04 attempts on average and about
-  2 ms to generate. Every row in the data appears in at least one level.
-- **Spread:** over 6,000 levels every character is murderer in 9.5-10.5% and victim in 9.2-11.1% of the
-  levels; no motive or alibi is used more than twice as often as the median one.
+  2.5 ms to generate. Every row in the data appears in at least one level.
+- **Spread:** over 5,000 levels every character is murderer in 9.3-10.8% and victim in 8.9-11.1% of the
+  levels; no motive is used more than 1.5 times and no alibi more than 2.2 times as often as the median one.
 - **Compile check:** the runtime compiles as C# 9 / netstandard2.1 with warnings as errors.
 
 ## Conversion notes

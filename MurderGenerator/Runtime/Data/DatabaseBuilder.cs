@@ -94,7 +94,8 @@ namespace FifteenBraincells.MurderGenerator.Data
                 alibis,
                 _dto.contradictions.Select(BuildContradiction).ToList(),
                 _dto.redHerrings.Select(BuildRedHerring).ToList(),
-                plans);
+                plans,
+                _dto.closableRooms.Select(c => (IReadOnlyList<string>)Rooms(c.rooms, "closable rooms")).ToList());
         }
 
         // ------------------------------------------------------------------ entities
@@ -208,6 +209,8 @@ namespace FifteenBraincells.MurderGenerator.Data
                 ExcludedNotBlockedFor = Needs(dto.excludedNotBlockedFor, context),
                 NoOtherAlibiFor = Characters(dto.noOtherAlibiFor, context),
                 SuspectHasTags = dto.suspectHasTags.Select(t => Tag(t, context)).ToList(),
+                ExcludedNotOnPartialList = dto.excludedNotOnPartialList,
+                MentionedRooms = Rooms(dto.mentions, context),
             };
 
             var namesCharacters = effect == MethodClueEffect.ExcludeFixed || effect == MethodClueEffect.OnlyFixed;
@@ -228,6 +231,7 @@ namespace FifteenBraincells.MurderGenerator.Data
                 DifferentSex = dto.differentSex,
                 NotBothTag = dto.notBothTag.Length == 0 ? "" : Tag(dto.notBothTag, context),
                 Clue = Line(dto.clue.form, dto.clue.speaker, dto.clue.room, dto.clue.textKey, context),
+                MentionedRooms = Rooms(dto.mentions, context),
             };
         }
 
@@ -264,6 +268,7 @@ namespace FifteenBraincells.MurderGenerator.Data
                 {
                     Line = Line(v.form, v.speaker, v.room, v.textKey, context),
                     HolderTag = v.holderTag.Length == 0 ? "" : Tag(v.holderTag, context),
+                    MentionedRooms = Rooms(v.mentions, context),
                 }).ToList(),
             };
             Check(alibi.Variants.Count > 0, $"{context}: has no variants");
@@ -297,8 +302,10 @@ namespace FifteenBraincells.MurderGenerator.Data
                     NotWithMethods = dto.notWithMethods.Select(m => MethodRef(m, context)).ToList(),
                     OnlyForBathroomAlibis = dto.onlyForBathroomAlibis,
                     NoOtherAlibiInBathroom = dto.noOtherAlibiInBathroom,
+                    NotForOutsideAlibis = dto.notForOutsideAlibis,
                 },
                 MentionsSuspect = dto.mentionsSuspect,
+                MentionedRooms = Rooms(dto.mentions, context),
             };
         }
 
@@ -316,6 +323,7 @@ namespace FifteenBraincells.MurderGenerator.Data
                 Time = dto.time.Length == 0 ? (ClockTime?)null : Time(dto.time, context),
                 SameAsAlibi = dto.sameAsAlibi.Length == 0 ? null : AlibiRef(dto.sameAsAlibi, context),
                 Line = hasAlibi ? null : Line(dto.clue.form, dto.clue.speaker, dto.clue.room, dto.clue.textKey, context),
+                MentionedRooms = Rooms(dto.mentions, context),
             };
             Check(hasAlibi || plan.Time.HasValue, $"{context}: a plan with its own line needs a time");
             Check(!dto.solo || hasAlibi, $"{context}: a solo plan needs an alibi");
@@ -332,6 +340,7 @@ namespace FifteenBraincells.MurderGenerator.Data
                 Needs = Needs(dto.needs, context),
                 Suspicion = HerringLine(dto.suspicion, context),
                 Explanation = HerringLine(dto.explanation, context),
+                MentionedRooms = Rooms(dto.mentions, context),
             };
         }
 
@@ -342,6 +351,9 @@ namespace FifteenBraincells.MurderGenerator.Data
         };
 
         // ------------------------------------------------------------------ shared parts
+
+        private IReadOnlyList<string> Rooms(List<string> ids, string context) =>
+            (ids ?? new List<string>()).Select(id => RoomById(id, context).Id).ToList();
 
         private LineSpec Line(string form, SpeakerDto speaker, RoomRefDto room, string textKey, string context)
         {

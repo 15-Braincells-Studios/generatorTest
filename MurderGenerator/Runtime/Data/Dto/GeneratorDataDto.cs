@@ -21,6 +21,9 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public List<ContradictionDto> contradictions = new List<ContradictionDto>();
         public List<RedHerringDto> redHerrings = new List<RedHerringDto>();
         public List<VictimPlanDto> victimPlans = new List<VictimPlanDto>();
+
+        /// <summary>Rooms that can be closed for a level. Rooms in one entry are always closed together.</summary>
+        public List<ClosableRoomDto> closableRooms = new List<ClosableRoomDto>();
     }
 
     [Serializable]
@@ -149,6 +152,8 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public List<string> excludedNotBlockedFor = new List<string>();
         public List<string> noOtherAlibiFor = new List<string>();
         public List<string> suspectHasTags = new List<string>();
+        public bool excludedNotOnPartialList;
+        public List<string> mentions = new List<string>();
         public List<string> blocks = new List<string>();
     }
 
@@ -170,6 +175,7 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public bool sameRole;
         public bool differentSex;
         public string notBothTag = "";
+        public List<string> mentions = new List<string>();
         public LineDto clue = new LineDto();
     }
 
@@ -189,6 +195,7 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public SpeakerDto speaker = new SpeakerDto();
         public RoomRefDto room = new RoomRefDto();
         public string holderTag = "";
+        public List<string> mentions = new List<string>();
         public string textKey = "";
     }
 
@@ -235,6 +242,8 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public bool onlyForBathroomAlibis;
         public bool noOtherAlibiInBathroom;
         public bool mentionsSuspect;
+        public bool notForOutsideAlibis;
+        public List<string> mentions = new List<string>();
     }
 
     [Serializable]
@@ -247,6 +256,7 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public bool solo;
         public string time = "";
         public string sameAsAlibi = "";
+        public List<string> mentions = new List<string>();
         public LineDto clue = new LineDto();
     }
 
@@ -266,7 +276,16 @@ namespace FifteenBraincells.MurderGenerator.Data.Dto
         public string id = "";
         public TagFilterDto subjects = new TagFilterDto();
         public List<string> needs = new List<string>();
+        public List<string> mentions = new List<string>();
         public HerringLineDto suspicion = new HerringLineDto();
         public HerringLineDto explanation = new HerringLineDto();
+    }
+
+    /// <summary>One switch in the "closed rooms" option: one room, or rooms that are always closed together.</summary>
+    /// <remarks>JsonUtility cannot read nested arrays, so each entry is an object.</remarks>
+    [Serializable]
+    public sealed class ClosableRoomDto
+    {
+        public List<string> rooms = new List<string>();
     }
 }

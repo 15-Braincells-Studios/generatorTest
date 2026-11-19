@@ -141,7 +141,8 @@ namespace FifteenBraincells.MurderGenerator.Generation
         private void AddMethodClue(MethodClue clue)
         {
             var role = clue.EffectRole;
-            var args = Args(("murder_place", new RoomArg(_murderRoom)), ("murder_time", new TimeArg(_murderTime)));
+            var args = Args(("murder_place", new RoomArg(_murderRoom)), ("murder_time", new TimeArg(_murderTime)),
+                ("victim", Arg(_victim)));
             var effect = ClueEffect.Nothing;
             IReadOnlyList<Character> named = null;
 
@@ -158,6 +159,7 @@ namespace FifteenBraincells.MurderGenerator.Generation
                     var others = PartialListOthers(clue);
                     var extra = _rng.Range(_settings.PartialListExtraMin, System.Math.Min(_settings.PartialListExtraMax, others.Count));
                     named = _rng.Shuffled(_rng.Shuffled(others).Take(extra).Append(Truth(role)));
+                    _partialListed.UnionWith(named);
                     args["partial_list"] = new CharacterListArg(named);
                     effect = ClueEffect.OnlyThese(role, named);
                     break;
@@ -212,7 +214,9 @@ namespace FifteenBraincells.MurderGenerator.Generation
                 effect = ClueEffect.OnlyThese(CrimeRole.Victim, new[] { _victim });
             }
 
-            AddClue(ClueCategory.Method, clue.Id, clue.Line, args, effect, new LineContext { Suspect = _suspect, Victim = _victim });
+            // An unnamed witness is never the suspect or the victim.
+            AddClue(ClueCategory.Method, clue.Id, clue.Line, args, effect, new LineContext { Suspect = _suspect, Victim = _victim },
+                mayNotSpeak: new[] { _suspect, _victim });
         }
 
         private Character Truth(CrimeRole role) => role == CrimeRole.Suspect ? _suspect : _victim;
@@ -231,7 +235,8 @@ namespace FifteenBraincells.MurderGenerator.Generation
             var filter = clue.ExcludedFilter.IsEmpty ? _method.PoolFor(clue.EffectRole) : clue.ExcludedFilter;
             return Innocents
                 .Where(c => c != clue.Line.Speaker.Character && filter.Matches(c)
-                            && CanDo(c, clue.ExcludedNotBlockedFor) && !_mayNotHaveAlibi.Contains(c))
+                            && CanDo(c, clue.ExcludedNotBlockedFor) && !_mayNotHaveAlibi.Contains(c)
+                            && !(clue.ExcludedNotOnPartialList && _partialListed.Contains(c)))
                 .ToList();
         }
 

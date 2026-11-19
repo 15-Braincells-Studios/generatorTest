@@ -30,6 +30,9 @@ namespace FifteenBraincells.MurderGenerator.Generation
         private readonly HashSet<Character> _mayNotHaveAlibi = new HashSet<Character>();
         private readonly Dictionary<Character, HashSet<string>> _noAlibiRooms = new Dictionary<Character, HashSet<string>>();
 
+        // Everyone named on a "(partial list)" so far.
+        private readonly HashSet<Character> _partialListed = new HashSet<Character>();
+
         private Method _method;
         private PlacedRoom _murderRoom;
         private ClockTime _murderTime;
@@ -169,8 +172,12 @@ namespace FifteenBraincells.MurderGenerator.Generation
             }
         }
 
+        /// <summary>Where a character keeps their things. When that room is closed, the staff room.</summary>
         private PlacedRoom HomeOf(Character owner) =>
-            owner.HomeRoomId == RoomRef.Bedroom ? BedroomOf(owner) : new PlacedRoom(_db.GetRoom(owner.HomeRoomId));
+            owner.HomeRoomId == RoomRef.Bedroom ? BedroomOf(owner)
+            : new PlacedRoom(_db.GetRoom(_db.IsClosed(owner.HomeRoomId) ? ClosedHomeFallbackRoom : owner.HomeRoomId));
+
+        private const string ClosedHomeFallbackRoom = "staff_room";
 
         private PlacedRoom BedroomOf(Character owner) => new PlacedRoom(_db.GetRoom(RoomRef.Bedroom), owner);
 
@@ -193,6 +200,13 @@ namespace FifteenBraincells.MurderGenerator.Generation
         private Level Finish(int seed, int attemptNumber)
         {
             var clues = AllClues().Select(ToClue).ToList();
+
+            // A note on the door of every closed room. It proves nothing.
+            foreach (var roomId in _db.ClosedRoomIds.OrderBy(id => id))
+            {
+                clues.Add(new Clue(ClueCategory.ClosedRoom, "closed_room_" + roomId, ClueForm.Note, null,
+                    new PlacedRoom(_db.GetRoom(roomId)), Clue.ClosedRoomNoteKey, new Dictionary<string, TextArg>(), ClueEffect.Nothing));
+            }
 
             // Defensive: the steps above guarantee these, but a level that breaks them must never leave the generator.
             var result = Solver.Solve(clues, Cast);
